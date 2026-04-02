@@ -4792,6 +4792,15 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D | NS_VIEW3D_SHADING, nullptr);
 
+  prop = RNA_def_property(srna, "select_through", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", V3D_SHADING_SELECT_THROUGH);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(
+      prop,
+      "Select Through",
+      "Ignore depth when selecting mesh elements in edit mode");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D | NS_VIEW3D_SHADING, nullptr);
+
   prop = RNA_def_property(srna, "use_dof", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", V3D_SHADING_DEPTH_OF_FIELD);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);

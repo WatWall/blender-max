@@ -848,7 +848,7 @@ static bool do_lasso_select_mesh(const ViewContext *vc,
 
   GPU_matrix_set(vc->rv3d->viewmat);
 
-  const bool use_zbuf = !XRAY_FLAG_ENABLED(vc->v3d);
+  const bool use_zbuf = !XRAY_FLAG_ENABLED(vc->v3d) && !SELECT_THROUGH_ENABLED(vc->v3d);
 
   EditSelectBuf_Cache *esel = static_cast<EditSelectBuf_Cache *>(wm_userdata->data);
   if (use_zbuf) {
@@ -4106,7 +4106,7 @@ static bool do_mesh_box_select(const ViewContext *vc,
 
   GPU_matrix_set(vc->rv3d->viewmat);
 
-  const bool use_zbuf = !XRAY_FLAG_ENABLED(vc->v3d);
+  const bool use_zbuf = !XRAY_FLAG_ENABLED(vc->v3d) && !SELECT_THROUGH_ENABLED(vc->v3d);
 
   EditSelectBuf_Cache *esel = static_cast<EditSelectBuf_Cache *>(wm_userdata->data);
   if (use_zbuf) {
@@ -4843,7 +4843,7 @@ static bool mesh_circle_select(const ViewContext *vc,
 
   view3d_userdata_circleselect_init(&data, vc, select, mval, rad);
 
-  const bool use_zbuf = !XRAY_FLAG_ENABLED(vc->v3d);
+  const bool use_zbuf = !XRAY_FLAG_ENABLED(vc->v3d) && !SELECT_THROUGH_ENABLED(vc->v3d);
 
   if (use_zbuf) {
     if (wm_userdata->data == nullptr) {

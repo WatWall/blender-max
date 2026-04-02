@@ -1373,6 +1373,9 @@ void ED_view3d_shade_update(Main *bmain, View3D *v3d, ScrArea *area);
 #define XRAY_ENABLED(v3d) SHADING_XRAY_ENABLED((v3d)->shading)
 #define XRAY_ACTIVE(v3d) SHADING_XRAY_ACTIVE((v3d)->shading)
 
+#define SELECT_THROUGH_ENABLED(v3d) \
+  (((v3d)->shading.flag & V3D_SHADING_SELECT_THROUGH) != 0)
+
 #define OVERLAY_RETOPOLOGY_ENABLED(overlay) \
   (((overlay).edit_flag & V3D_OVERLAY_EDIT_RETOPOLOGY) != 0)
 #ifdef __APPLE__

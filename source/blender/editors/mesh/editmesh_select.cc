@@ -445,7 +445,7 @@ BMVert *EDBM_vert_find_nearest_ex(ViewContext *vc,
 {
   uint base_index = 0;
 
-  if (!XRAY_FLAG_ENABLED(vc->v3d)) {
+  if (!XRAY_FLAG_ENABLED(vc->v3d) && !SELECT_THROUGH_ENABLED(vc->v3d)) {
     uint dist_px_manhattan_test = uint(
         ED_view3d_backbuf_sample_size_clamp(vc->region, *dist_px_manhattan_p));
     uint index;
@@ -675,7 +675,7 @@ BMEdge *EDBM_edge_find_nearest_ex(ViewContext *vc,
 {
   uint base_index = 0;
 
-  if (!XRAY_FLAG_ENABLED(vc->v3d)) {
+  if (!XRAY_FLAG_ENABLED(vc->v3d) && !SELECT_THROUGH_ENABLED(vc->v3d)) {
     uint dist_px_manhattan_test = uint(
         ED_view3d_backbuf_sample_size_clamp(vc->region, *dist_px_manhattan_p));
     uint index;
@@ -888,7 +888,7 @@ BMFace *EDBM_face_find_nearest_ex(ViewContext *vc,
 {
   uint base_index = 0;
 
-  if (!XRAY_FLAG_ENABLED(vc->v3d)) {
+  if (!XRAY_FLAG_ENABLED(vc->v3d) && !SELECT_THROUGH_ENABLED(vc->v3d)) {
     float dist_test;
     uint index;
     BMFace *efa;

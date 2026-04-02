@@ -6778,6 +6778,10 @@ class VIEW3D_PT_shading_options(Panel):
             # X-ray mode is off when alpha is 1.0
             xray_active = shading.show_xray and shading.xray_alpha != 1
 
+        if shading.type in {'WIREFRAME', 'SOLID'}:
+            col.prop(shading, 'select_through')
+
+        if shading.type == 'SOLID':
             row = col.row(align=True)
             row.prop(shading, "show_shadows", text="")
             row.active = not xray_active
