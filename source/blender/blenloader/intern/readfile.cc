@@ -3973,6 +3973,7 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
   BLO_read_struct_list(reader, bUserAssetLibrary, &user->asset_libraries);
   BLO_read_struct_list(reader, bUserExtensionRepo, &user->extension_repos);
   BLO_read_struct_list(reader, bUserAssetShelfSettings, &user->asset_shelves_settings);
+  BLO_read_struct_list(reader, UserDef_PropertyDefault, &user->property_defaults);
 
   for (wmKeyMap &keymap : user->user_keymaps) {
     keymap.modal_items = nullptr;

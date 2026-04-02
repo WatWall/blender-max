@@ -896,6 +896,16 @@ bool popup_context_menu_for_button(bContext *C, Button *but, const wmEvent *even
       layout.separator();
     }
 
+    if (ELEM(type, PROP_BOOLEAN, PROP_INT, PROP_FLOAT, PROP_ENUM)) {
+      layout.op("UI_OT_set_as_default_button",
+                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Set Value as New Default"),
+                ICON_PINNED);
+      layout.op("UI_OT_clear_user_default_button",
+                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Reset to Factory Default"),
+                ICON_LOOP_BACK);
+      layout.separator();
+    }
+
     if (is_array_component) {
       PointerRNA op_ptr = layout.op(
           "UI_OT_copy_to_selected_button",

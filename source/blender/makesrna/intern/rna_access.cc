@@ -19,6 +19,7 @@
 #include "DNA_ID.h"
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_userdef_types.h"
 #include "DNA_windowmanager_types.h"
 
 #include "BLI_dynstr.h"
@@ -655,6 +656,19 @@ static const char *rna_ensure_property_identifier(const PropertyRNA *prop)
     return prop->identifier;
   }
   return (reinterpret_cast<const IDProperty *>(prop))->name;
+}
+
+static UserDef_PropertyDefault *rna_property_user_default_find(const PointerRNA *ptr,
+                                                                PropertyRNA *prop)
+{
+  const char *struct_id = RNA_struct_identifier(ptr->type);
+  const char *prop_id = rna_ensure_property_identifier(prop);
+  for (UserDef_PropertyDefault &pd : U.property_defaults) {
+    if (STREQ(pd.struct_identifier, struct_id) && STREQ(pd.property_identifier, prop_id)) {
+      return &pd;
+    }
+  }
+  return nullptr;
 }
 
 static const char *rna_ensure_property_description(const PropertyRNA *prop)
@@ -2961,6 +2975,10 @@ void RNA_property_boolean_set_index(PointerRNA *ptr, PropertyRNA *prop, int inde
 
 bool RNA_property_boolean_get_default(PointerRNA *ptr, PropertyRNA *prop)
 {
+  if (UserDef_PropertyDefault *pd = rna_property_user_default_find(ptr, prop)) {
+    return pd->int_val != 0;
+  }
+
   /* TODO: Make defaults work for IDProperties. */
   BoolPropertyRNA *bprop = reinterpret_cast<BoolPropertyRNA *>(rna_ensure_property(prop));
 
@@ -3432,6 +3450,10 @@ void RNA_property_int_set_index(PointerRNA *ptr, PropertyRNA *prop, int index, i
 
 int RNA_property_int_get_default(PointerRNA *ptr, PropertyRNA *prop)
 {
+  if (UserDef_PropertyDefault *pd = rna_property_user_default_find(ptr, prop)) {
+    return pd->int_val;
+  }
+
   IntPropertyRNA *iprop = reinterpret_cast<IntPropertyRNA *>(rna_ensure_property(prop));
 
   if (prop->magic != RNA_MAGIC) {
@@ -3926,6 +3948,10 @@ void RNA_property_float_set_index(PointerRNA *ptr, PropertyRNA *prop, int index,
 
 float RNA_property_float_get_default(PointerRNA *ptr, PropertyRNA *prop)
 {
+  if (UserDef_PropertyDefault *pd = rna_property_user_default_find(ptr, prop)) {
+    return pd->float_val;
+  }
+
   FloatPropertyRNA *fprop = reinterpret_cast<FloatPropertyRNA *>(rna_ensure_property(prop));
 
   BLI_assert(RNA_property_type(prop) == PROP_FLOAT);
@@ -4430,6 +4456,10 @@ void RNA_property_enum_set(PointerRNA *ptr, PropertyRNA *prop, int value)
 
 int RNA_property_enum_get_default(PointerRNA *ptr, PropertyRNA *prop)
 {
+  if (UserDef_PropertyDefault *pd = rna_property_user_default_find(ptr, prop)) {
+    return pd->int_val;
+  }
+
   EnumPropertyRNA *eprop = reinterpret_cast<EnumPropertyRNA *>(rna_ensure_property(prop));
   BLI_assert(RNA_property_type(prop) == PROP_ENUM);
 

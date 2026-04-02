@@ -843,6 +843,17 @@ struct bUserAssetShelfSettings {
   ListBaseT<AssetCatalogPathLink> enabled_catalog_paths = {nullptr, nullptr};
 };
 
+struct UserDef_PropertyDefault {
+  DNA_DEFINE_CXX_METHODS(UserDef_PropertyDefault)
+  struct UserDef_PropertyDefault *next, *prev;
+  char struct_identifier[128] = "";
+  char property_identifier[64] = "";
+  short property_type = 0;
+  char _pad[6] = {};
+  int int_val = 0;
+  float float_val = 0.0f;
+};
+
 /**
  * Main user preferences data, typically accessed from #U.
  * See: #BKE_blendfile_userdef_from_defaults & #BKE_blendfile_userdef_read.
@@ -1001,6 +1012,7 @@ struct UserDef {
   ListBaseT<bUserAssetLibrary> asset_libraries = {nullptr, nullptr};
   ListBaseT<bUserExtensionRepo> extension_repos = {nullptr, nullptr};
   ListBaseT<bUserAssetShelfSettings> asset_shelves_settings = {nullptr, nullptr};
+  ListBaseT<UserDef_PropertyDefault> property_defaults = {nullptr, nullptr};
 
   char keyconfigstr[64] = "Blender";
 

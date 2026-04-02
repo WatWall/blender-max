@@ -18,6 +18,7 @@
 #include "DNA_modifier_types.h" /* for handling geometry nodes properties */
 #include "DNA_object_types.h"   /* for OB_DATA_SUPPORT_ID */
 #include "DNA_screen_types.h"
+#include "DNA_userdef_types.h"
 
 #include "ANIM_keyframing.hh"
 
@@ -469,6 +470,148 @@ static void UI_OT_assign_default_button(wmOperatorType *ot)
 
   /* flags */
   ot->flag = OPTYPE_UNDO;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Set Value as New Default Button Operator
+ * \{ */
+
+static bool set_as_default_button_poll(bContext *C)
+{
+  PointerRNA ptr;
+  PropertyRNA *prop;
+  int index;
+
+  context_active_but_prop_get(C, &ptr, &prop, &index);
+
+  if (ptr.data && prop && RNA_property_editable(&ptr, prop)) {
+    const PropertyType type = RNA_property_type(prop);
+    return !RNA_property_array_check(prop) && ELEM(type, PROP_BOOLEAN, PROP_INT, PROP_FLOAT, PROP_ENUM);
+  }
+
+  return false;
+}
+
+static wmOperatorStatus set_as_default_button_exec(bContext *C, wmOperator * /*op*/)
+{
+  PointerRNA ptr;
+  PropertyRNA *prop;
+  int index;
+
+  context_active_but_prop_get(C, &ptr, &prop, &index);
+
+  if (ptr.data && prop && RNA_property_editable(&ptr, prop)) {
+    const char *struct_id = RNA_struct_identifier(ptr.type);
+    const char *prop_id = RNA_property_identifier(prop);
+    const PropertyType type = RNA_property_type(prop);
+
+    UserDef_PropertyDefault *pd = nullptr;
+    for (UserDef_PropertyDefault &iter : U.property_defaults) {
+      if (STREQ(iter.struct_identifier, struct_id) && STREQ(iter.property_identifier, prop_id)) {
+        pd = &iter;
+        break;
+      }
+    }
+
+    if (!pd) {
+      pd = MEM_new<UserDef_PropertyDefault>(__func__);
+      STRNCPY(pd->struct_identifier, struct_id);
+      STRNCPY(pd->property_identifier, prop_id);
+      BLI_addtail(&U.property_defaults, pd);
+    }
+
+    pd->property_type = short(type);
+    if (ELEM(type, PROP_BOOLEAN, PROP_INT, PROP_ENUM)) {
+      pd->int_val = RNA_property_int_get(&ptr, prop);
+    }
+    else if (type == PROP_FLOAT) {
+      pd->float_val = RNA_property_float_get(&ptr, prop);
+    }
+
+    U.runtime.is_dirty = true;
+    return OPERATOR_FINISHED;
+  }
+
+  return OPERATOR_CANCELLED;
+}
+
+static void UI_OT_set_as_default_button(wmOperatorType *ot)
+{
+  ot->name = "Set Value as New Default";
+  ot->idname = "UI_OT_set_as_default_button";
+  ot->description = "Set this property's current value as the new user-defined default";
+
+  ot->poll = set_as_default_button_poll;
+  ot->exec = set_as_default_button_exec;
+
+  ot->flag = OPTYPE_REGISTER;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Clear User Default Button Operator
+ * \{ */
+
+static bool clear_user_default_button_poll(bContext *C)
+{
+  PointerRNA ptr;
+  PropertyRNA *prop;
+  int index;
+
+  context_active_but_prop_get(C, &ptr, &prop, &index);
+
+  if (!ptr.data || !prop) {
+    return false;
+  }
+
+  const char *struct_id = RNA_struct_identifier(ptr.type);
+  const char *prop_id = RNA_property_identifier(prop);
+  for (const UserDef_PropertyDefault &pd : U.property_defaults) {
+    if (STREQ(pd.struct_identifier, struct_id) && STREQ(pd.property_identifier, prop_id)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static wmOperatorStatus clear_user_default_button_exec(bContext *C, wmOperator * /*op*/)
+{
+  PointerRNA ptr;
+  PropertyRNA *prop;
+  int index;
+
+  context_active_but_prop_get(C, &ptr, &prop, &index);
+
+  if (ptr.data && prop) {
+    const char *struct_id = RNA_struct_identifier(ptr.type);
+    const char *prop_id = RNA_property_identifier(prop);
+
+    for (UserDef_PropertyDefault &pd : U.property_defaults) {
+      if (STREQ(pd.struct_identifier, struct_id) && STREQ(pd.property_identifier, prop_id)) {
+        BLI_remlink(&U.property_defaults, &pd);
+        MEM_delete(&pd);
+        U.runtime.is_dirty = true;
+        return OPERATOR_FINISHED;
+      }
+    }
+  }
+
+  return OPERATOR_CANCELLED;
+}
+
+static void UI_OT_clear_user_default_button(wmOperatorType *ot)
+{
+  ot->name = "Reset to Factory Default";
+  ot->idname = "UI_OT_clear_user_default_button";
+  ot->description = "Remove the user-defined default and revert to Blender's factory default";
+
+  ot->poll = clear_user_default_button_poll;
+  ot->exec = clear_user_default_button_exec;
+
+  ot->flag = OPTYPE_REGISTER;
 }
 
 /** \} */
@@ -3012,6 +3155,8 @@ void operatortypes_ui()
   WM_operatortype_append(UI_OT_copy_python_command_button);
   WM_operatortype_append(UI_OT_reset_default_button);
   WM_operatortype_append(UI_OT_assign_default_button);
+  WM_operatortype_append(UI_OT_set_as_default_button);
+  WM_operatortype_append(UI_OT_clear_user_default_button);
   WM_operatortype_append(UI_OT_unset_property_button);
   WM_operatortype_append(UI_OT_copy_to_selected_button);
   WM_operatortype_append(UI_OT_copy_driver_to_selected_button);
