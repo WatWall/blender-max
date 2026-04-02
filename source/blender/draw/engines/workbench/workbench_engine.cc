@@ -249,15 +249,20 @@ class Instance : public DrawEngine {
   void draw_to_mesh_pass(ObjectRef &ob_ref, bool is_transparent, F draw_callback)
   {
     const bool in_front = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0;
+    const bool per_object_xray = !scene_state_.xray_mode && (ob_ref.object->dtx & OB_DRAWXRAY);
 
     if (scene_state_.xray_mode || is_transparent) {
       if (in_front) {
         draw_callback(transparent_ps_.accumulation_in_front_ps_);
-        draw_callback(transparent_depth_ps_.in_front_ps_);
+        if (!per_object_xray) {
+          draw_callback(transparent_depth_ps_.in_front_ps_);
+        }
       }
       else {
         draw_callback(transparent_ps_.accumulation_ps_);
-        draw_callback(transparent_depth_ps_.main_ps_);
+        if (!per_object_xray) {
+          draw_callback(transparent_depth_ps_.main_ps_);
+        }
       }
     }
     else {

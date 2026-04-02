@@ -59,6 +59,8 @@ class Meshes : Overlay {
   PassSimple edit_mesh_edges_ps_ = {"Edges"};
   PassSimple edit_mesh_faces_ps_ = {"Faces"};
   PassSimple edit_mesh_cages_ps_ = {"Cages"}; /* Same as faces but with a different offset. */
+  PassSimple edit_mesh_faces_per_object_xray_ps_ = {"Faces Per-Object X-Ray"};
+  PassSimple edit_mesh_cages_per_object_xray_ps_ = {"Cages Per-Object X-Ray"};
   PassSimple edit_mesh_verts_ps_ = {"Verts"};
   PassSimple edit_mesh_facedots_ps_ = {"FaceDots"};
   PassSimple edit_mesh_skin_roots_ps_ = {"SkinRoots"};
@@ -68,6 +70,7 @@ class Meshes : Overlay {
 
   bool xray_enabled_ = false;
   bool xray_flag_enabled_ = false;
+  bool has_per_object_xray_ = false;
 
   bool show_retopology_ = false;
   bool show_mesh_analysis_ = false;
@@ -104,6 +107,7 @@ class Meshes : Overlay {
     offset_data_ = state.offset_data_get();
     xray_enabled_ = state.xray_enabled;
     xray_flag_enabled_ = state.xray_flag_enabled;
+    has_per_object_xray_ = false;
 
     const int edit_flag = state.v3d->overlay.edit_flag;
 
@@ -268,6 +272,23 @@ class Meshes : Overlay {
       mesh_edit_common_resource_bind(pass, face_alpha, cage_ndc_offset_);
     }
     {
+      auto &pass = edit_mesh_faces_per_object_xray_ps_;
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
+                         face_culling,
+                     state.clipping_plane_count);
+      pass.shader_set(res.shaders->mesh_edit_face.get());
+      mesh_edit_common_resource_bind(pass, face_alpha, 0.0f);
+    }
+    {
+      auto &pass = edit_mesh_cages_per_object_xray_ps_;
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA,
+                     state.clipping_plane_count);
+      pass.shader_set(res.shaders->mesh_edit_face.get());
+      mesh_edit_common_resource_bind(pass, face_alpha, cage_ndc_offset_);
+    }
+    {
       auto &pass = edit_mesh_verts_ps_;
       pass.init();
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
@@ -314,7 +335,8 @@ class Meshes : Overlay {
     /* WORKAROUND: GPU subdiv uses a different normal format. Remove this once GPU subdiv is
      * refactored. */
     const bool use_gpu_subdiv = BKE_subsurf_modifier_has_gpu_subdiv(&mesh);
-    const bool draw_as_solid = (ob->dt > OB_WIRE) && !state.xray_enabled;
+    const bool object_xray = (ob->dtx & OB_DRAWXRAY) && !state.xray_enabled;
+    const bool draw_as_solid = (ob->dt > OB_WIRE) && !state.xray_enabled && !object_xray;
     const bool has_edit_cage = mesh_has_edit_cage(ob);
 
     if (show_retopology_) {
@@ -358,7 +380,13 @@ class Meshes : Overlay {
     }
     {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_triangles(mesh);
-      (has_edit_cage ? &edit_mesh_cages_ps_ : &edit_mesh_faces_ps_)->draw(geom, res_handle);
+      if (object_xray) {
+        has_per_object_xray_ = true;
+        (has_edit_cage ? &edit_mesh_cages_per_object_xray_ps_ : &edit_mesh_faces_per_object_xray_ps_)->draw(geom, res_handle);
+      }
+      else {
+        (has_edit_cage ? &edit_mesh_cages_ps_ : &edit_mesh_faces_ps_)->draw(geom, res_handle);
+      }
     }
     if (select_vert_) {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edit_vertices(mesh);
@@ -418,12 +446,18 @@ class Meshes : Overlay {
       return;
     }
 
-    if (xray_enabled_) {
+    if (xray_enabled_ || has_per_object_xray_) {
       /* Still use depth-testing for selected faces when X-Ray flag is enabled but transparency is
        * off (X-Ray Opacity == 1.0 or in Preview/Render mode) (See #135325). */
       GPU_framebuffer_bind(framebuffer);
-      manager.submit(edit_mesh_faces_ps_, view);
-      manager.submit(edit_mesh_cages_ps_, view);
+      if (xray_enabled_) {
+        manager.submit(edit_mesh_faces_ps_, view);
+        manager.submit(edit_mesh_cages_ps_, view);
+      }
+      if (has_per_object_xray_) {
+        manager.submit(edit_mesh_faces_per_object_xray_ps_, view);
+        manager.submit(edit_mesh_cages_per_object_xray_ps_, view);
+      }
     }
 
     if (!xray_flag_enabled_) {
