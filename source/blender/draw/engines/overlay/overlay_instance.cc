@@ -1163,6 +1163,10 @@ bool Instance::object_is_rendered_transparent(const Object *object, const State 
     return false;
   }
 
+  if ((object->dtx & OB_DRAWXRAY) && !state.xray_enabled) {
+    return true;
+  }
+
   if (shading.color_type == V3D_SHADING_OBJECT_COLOR) {
     return object->color[3] < 1.0f;
   }

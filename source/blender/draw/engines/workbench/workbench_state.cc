@@ -152,11 +152,14 @@ void SceneState::init(const DRWContext *context,
     shading.color_type = V3D_SHADING_OBJECT_COLOR;
     shading.xray_alpha = 0.0f;
   }
-  else if (SHADING_XRAY_ENABLED(shading)) {
-    shading.xray_alpha = SHADING_XRAY_ALPHA(shading);
-  }
   else {
-    shading.xray_alpha = 1.0f;
+    user_xray_alpha = SHADING_XRAY_ALPHA(shading);
+    if (SHADING_XRAY_ENABLED(shading)) {
+      shading.xray_alpha = SHADING_XRAY_ALPHA(shading);
+    }
+    else {
+      shading.xray_alpha = 1.0f;
+    }
   }
   xray_mode = shading.xray_alpha != 1.0f;
 

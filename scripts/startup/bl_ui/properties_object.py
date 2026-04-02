@@ -243,6 +243,7 @@ class OBJECT_PT_display(ObjectButtonsPanel, Panel):
             col.prop(obj, "show_texture_space", text="Texture Space")
             col.prop(obj.display, "show_shadows", text="Shadow")
         col.prop(obj, "show_in_front", text="In Front")
+        col.prop(obj, "show_xray", text="X-Ray")
         # if obj_type == 'MESH' or is_empty_image:
         #    col.prop(obj, "show_transparent", text="Transparency")
         sub = layout.column()

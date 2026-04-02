@@ -235,6 +235,16 @@ class Instance : public DrawEngine {
     }
   }
 
+  Material apply_per_object_xray(ObjectRef &ob_ref, Material mat)
+  {
+    if (!scene_state_.xray_mode && (ob_ref.object->dtx & OB_DRAWXRAY)) {
+      float metallic = float(mat.packed_data & 0xFF) / 255.0f;
+      float roughness = float((mat.packed_data >> 8) & 0xFF) / 255.0f;
+      mat.packed_data = Material::pack_data(metallic, roughness, scene_state_.user_xray_alpha);
+    }
+    return mat;
+  }
+
   template<typename F>
   void draw_to_mesh_pass(ObjectRef &ob_ref, bool is_transparent, F draw_callback)
   {
@@ -303,6 +313,7 @@ class Instance : public DrawEngine {
 
           int material_slot = i;
           Material mat = this->get_material(ob_ref, object_state.color_type, material_slot);
+          mat = this->apply_per_object_xray(ob_ref, mat);
           has_transparent_material = has_transparent_material || mat.is_transparent();
 
           MaterialTexture texture;
@@ -334,6 +345,7 @@ class Instance : public DrawEngine {
 
       if (batch) {
         Material mat = this->get_material(ob_ref, object_state.color_type);
+        mat = this->apply_per_object_xray(ob_ref, mat);
         has_transparent_material = has_transparent_material || mat.is_transparent();
 
         this->draw_mesh(ob_ref, mat, batch, handle, &object_state.image_paint_override);
@@ -358,6 +370,7 @@ class Instance : public DrawEngine {
     if (object_state.use_per_material_batches) {
       for (SculptBatch &batch : sculpt_batches_get(ob_ref.object, features)) {
         Material mat = this->get_material(ob_ref, object_state.color_type, batch.material_slot);
+        mat = this->apply_per_object_xray(ob_ref, mat);
         if (scene_state_.show_paint_bvh_debug) {
           mat.base_color = batch.debug_color();
         }
@@ -373,6 +386,7 @@ class Instance : public DrawEngine {
     }
     else {
       Material mat = this->get_material(ob_ref, object_state.color_type);
+      mat = this->apply_per_object_xray(ob_ref, mat);
       for (SculptBatch &batch : sculpt_batches_get(ob_ref.object, features)) {
         if (scene_state_.show_paint_bvh_debug) {
           mat.base_color = batch.debug_color();
@@ -388,6 +402,7 @@ class Instance : public DrawEngine {
     ResourceHandleRange handle = manager.unique_handle(ob_ref);
 
     Material mat = this->get_material(ob_ref, object_state.color_type);
+    mat = this->apply_per_object_xray(ob_ref, mat);
     resources_.material_buf.append(mat);
     int material_index = resources_.material_buf.size() - 1;
 
@@ -410,6 +425,7 @@ class Instance : public DrawEngine {
         ob_ref, ob_ref.object->object_to_world());
 
     Material mat = this->get_material(ob_ref, object_state.color_type, psys->part->omat - 1);
+    mat = this->apply_per_object_xray(ob_ref, mat);
     MaterialTexture texture;
     if (object_state.color_type == V3D_SHADING_TEXTURE_COLOR) {
       texture = MaterialTexture(ob_ref.object, psys->part->omat - 1);
@@ -431,6 +447,7 @@ class Instance : public DrawEngine {
     ResourceHandleRange handle = manager.unique_handle(ob_ref);
 
     Material mat = this->get_material(ob_ref, object_state.color_type);
+    mat = this->apply_per_object_xray(ob_ref, mat);
     resources_.material_buf.append(mat);
     int material_index = resources_.material_buf.size() - 1;
 

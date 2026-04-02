@@ -156,6 +156,7 @@ struct SceneState {
   View3DShading shading = {};
   eLightingType lighting_type = eLightingType::STUDIO;
   bool xray_mode = false;
+  float user_xray_alpha = 1.0f;
 
   DRWState cull_state = DRW_STATE_NO_DRAW;
   Vector<float4> clip_planes;
