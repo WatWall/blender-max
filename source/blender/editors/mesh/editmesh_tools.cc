@@ -4189,6 +4189,7 @@ static Base *mesh_separate_tagged(
                                    false);
 
   ed::object::base_select(base_new, ed::object::BA_SELECT);
+  ed::object::base_select(base_old, ed::object::BA_DESELECT);
 
   BMO_op_callf(bm_old,
                (BMO_FLAG_DEFAULTS & ~BMO_FLAG_RESPECT_HIDE),
@@ -4270,6 +4271,7 @@ static Base *mesh_separate_arrays(Main *bmain,
                                    false);
 
   ed::object::base_select(base_new, ed::object::BA_SELECT);
+  ed::object::base_select(base_old, ed::object::BA_DESELECT);
 
   BM_mesh_copy_arrays(bm_old, bm_new, verts, verts_len, edges, edges_len, faces, faces_len);
 
