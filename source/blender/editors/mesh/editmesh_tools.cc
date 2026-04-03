@@ -4177,6 +4177,7 @@ static Base *mesh_separate_tagged(
   /* Take into account user preferences for duplicating actions. */
   const eDupli_ID_Flags dupflag = eDupli_ID_Flags(USER_DUP_MESH | (U.dupflag & USER_DUP_ACT));
   Base *base_new = ed::object::add_duplicate(bmain, scene, view_layer, base_old, dupflag);
+  base_new->object->mode = OB_MODE_OBJECT;
 
   /* normally would call directly after but in this case delay recalc */
   // DAG_relations_tag_update(bmain);
@@ -4190,6 +4191,7 @@ static Base *mesh_separate_tagged(
 
   ed::object::base_select(base_new, ed::object::BA_SELECT);
   ed::object::base_select(base_old, ed::object::BA_DESELECT);
+  view_layer->basact = base_new;
 
   BMO_op_callf(bm_old,
                (BMO_FLAG_DEFAULTS & ~BMO_FLAG_RESPECT_HIDE),
@@ -4259,6 +4261,7 @@ static Base *mesh_separate_arrays(Main *bmain,
   /* Take into account user preferences for duplicating actions. */
   const eDupli_ID_Flags dupflag = eDupli_ID_Flags(USER_DUP_MESH | (U.dupflag & USER_DUP_ACT));
   Base *base_new = ed::object::add_duplicate(bmain, scene, view_layer, base_old, dupflag);
+  base_new->object->mode = OB_MODE_OBJECT;
 
   /* normally would call directly after but in this case delay recalc */
   // DAG_relations_tag_update(bmain);
@@ -4532,6 +4535,7 @@ static wmOperatorStatus edbm_separate_exec(bContext *C, wmOperator *op)
         params.calc_normals = false;
         params.is_destructive = true;
         EDBM_update(id_cast<Mesh *>(base->object->data), &params);
+        ed::object::editmode_exit_ex(bmain, scene, base->object, ed::object::EM_FREEDATA);
       }
       changed_multi |= changed;
     }
