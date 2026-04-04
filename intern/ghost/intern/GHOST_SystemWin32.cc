@@ -23,6 +23,7 @@
 #include <shellapi.h>
 #include <shellscalingapi.h>
 #include <shlobj.h>
+#include <shobjidl.h>
 #include <tlhelp32.h>
 #include <windowsx.h>
 
@@ -2878,6 +2879,128 @@ GHOST_TSuccess GHOST_SystemWin32::showMessageBox(const char *title,
   free((void *)continue_label_16);
 
   return GHOST_kSuccess;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Native File Dialog
+ * \{ */
+
+GHOST_TSuccess GHOST_SystemWin32::showFileDialog(GHOST_TFileDialogType type,
+                                                  const char *title,
+                                                  const char *initial_path,
+                                                  const char *filter_glob,
+                                                  const char *default_name,
+                                                  GHOST_TEmbedderWindowID parent_window,
+                                                  char **r_filepath) const
+{
+  if (!r_filepath) {
+    return GHOST_kFailure;
+  }
+  *r_filepath = nullptr;
+
+  IFileDialog *pFileDialog = nullptr;
+  CLSID clsid;
+
+  if (type == GHOST_kFileDialogTypeSave) {
+    clsid = CLSID_FileSaveDialog;
+  }
+  else {
+    clsid = CLSID_FileOpenDialog;
+  }
+
+  HRESULT hr = CoCreateInstance(clsid, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pFileDialog));
+  if (FAILED(hr) || !pFileDialog) {
+    return GHOST_kFailure;
+  }
+
+  FILEOPENDIALOGOPTIONS dwOptions;
+  pFileDialog->GetOptions(&dwOptions);
+
+  dwOptions |= FOS_FILEMUSTEXIST | FOS_PATHMUSTEXIST | FOS_FORCEFILESYSTEM;
+  if (type == GHOST_kFileDialogTypeSave) {
+    dwOptions |= FOS_OVERWRITEPROMPT;
+  }
+  if (type == GHOST_kFileDialogTypeFolder) {
+    dwOptions |= FOS_PICKFOLDERS;
+  }
+  pFileDialog->SetOptions(dwOptions);
+
+  if (title) {
+    const wchar_t *title_16 = alloc_utf16_from_8(title, 0);
+    pFileDialog->SetTitle(title_16);
+    free((void *)title_16);
+  }
+
+  if (initial_path && initial_path[0]) {
+    const wchar_t *path_16 = alloc_utf16_from_8(initial_path, 0);
+    pFileDialog->SetFileName(path_16);
+    free((void *)path_16);
+  }
+
+  if (type == GHOST_kFileDialogTypeSave && default_name && default_name[0]) {
+    const wchar_t *name_16 = alloc_utf16_from_8(default_name, 0);
+    pFileDialog->SetFileName(name_16);
+    free((void *)name_16);
+  }
+
+  if (filter_glob && filter_glob[0] && type != GHOST_kFileDialogTypeFolder) {
+    std::wstring combined;
+    std::string glob(filter_glob);
+    size_t start = 0;
+    while (start < glob.size()) {
+      size_t end = glob.find(';', start);
+      if (end == std::string::npos) {
+        end = glob.size();
+      }
+      std::string token = glob.substr(start, end - start);
+      if (!token.empty()) {
+        if (!combined.empty()) {
+          combined += L';';
+        }
+        combined += std::wstring(token.begin(), token.end());
+      }
+      start = end + 1;
+    }
+
+    if (!combined.empty()) {
+      COMDLG_FILTERSPEC filter_specs[2] = {};
+      static const wchar_t *all_name = L"All Files (*.*)";
+      static const wchar_t *all_spec = L"*.*";
+      std::wstring filter_name = L"Supported Files";
+      filter_specs[0].pszName = filter_name.c_str();
+      filter_specs[0].pszSpec = combined.c_str();
+      filter_specs[1].pszName = all_name;
+      filter_specs[1].pszSpec = all_spec;
+      pFileDialog->SetFileTypes(2, filter_specs);
+      pFileDialog->SetFileTypeIndex(1);
+    }
+  }
+
+  hr = pFileDialog->Show((HWND)parent_window);
+
+  if (SUCCEEDED(hr)) {
+    IShellItem *pItem = nullptr;
+    hr = pFileDialog->GetResult(&pItem);
+    if (SUCCEEDED(hr)) {
+      PWSTR pszFilePath = nullptr;
+      hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+      if (SUCCEEDED(hr) && pszFilePath) {
+        int len = WideCharToMultiByte(CP_UTF8, 0, pszFilePath, -1, nullptr, 0, nullptr, nullptr);
+        if (len > 0) {
+          char *utf8_path = (char *)malloc(len);
+          WideCharToMultiByte(CP_UTF8, 0, pszFilePath, -1, utf8_path, len, nullptr, nullptr);
+          *r_filepath = utf8_path;
+        }
+        CoTaskMemFree(pszFilePath);
+      }
+      pItem->Release();
+    }
+  }
+
+  pFileDialog->Release();
+  return (*r_filepath) ? GHOST_kSuccess : GHOST_kFailure;
 }
 
 /** \} */

@@ -5242,8 +5242,17 @@ static void rna_def_userdef_view(BlenderRNA *brna)
   prop = RNA_def_property(srna, "filebrowser_display_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, temp_space_display_types);
   RNA_def_property_ui_text(prop,
-                           "File Browser Display Type",
-                           "Default location where the File Editor will be displayed in");
+                            "File Browser Display Type",
+                            "Default location where the File Editor will be displayed in");
+
+  prop = RNA_def_property(srna, "use_native_file_dialog", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "use_native_file_dialog", 1);
+  RNA_def_property_boolean_default(prop, false);
+  RNA_def_property_ui_text(
+      prop,
+      "Native File Dialog",
+      "Use the operating system's native file dialog instead of Blender's built-in file "
+      "browser on Windows");
 
   prop = RNA_def_property(srna, "preferences_display_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, temp_space_display_types);

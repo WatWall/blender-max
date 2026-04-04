@@ -25,11 +25,19 @@ struct wmWindow;
  *
  * In all other cases this message box should not be used. */
 void WM_ghost_show_message_box(const char *title,
-                               const char *message,
-                               const char *help_label,
-                               const char *continue_label,
-                               const char *link,
-                               GHOST_DialogOptions dialog_options);
+                                const char *message,
+                                const char *help_label,
+                                const char *continue_label,
+                                const char *link,
+                                GHOST_DialogOptions dialog_options);
+
+GHOST_TSuccess WM_ghost_show_file_dialog(GHOST_TFileDialogType type,
+                                         const char *title,
+                                         const char *initial_path,
+                                         const char *filter_glob,
+                                         const char *default_name,
+                                         GHOST_TEmbedderWindowID parent_window,
+                                         char **r_filepath);
 
 GHOST_TDrawingContextType wm_ghost_drawing_context_type(const GPUBackendType gpu_backend);
 

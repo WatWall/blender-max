@@ -203,6 +203,18 @@ class GHOST_System : public GHOST_ISystem {
     return GHOST_kFailure;
   };
 
+  /** \copydoc #GHOST_ISystem::showFileDialog */
+  GHOST_TSuccess showFileDialog(GHOST_TFileDialogType /*type*/,
+                                const char * /*title*/,
+                                const char * /*initial_path*/,
+                                const char * /*filter_glob*/,
+                                const char * /*default_name*/,
+                                GHOST_TEmbedderWindowID /*parent_window*/,
+                                char ** /*r_filepath*/) const override
+  {
+    return GHOST_kFailure;
+  };
+
   /***************************************************************************************
    * Other (internal) functionality.
    ***************************************************************************************/

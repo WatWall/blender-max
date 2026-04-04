@@ -502,6 +502,26 @@ class GHOST_ISystem {
                                         const char * /*link*/,
                                         GHOST_DialogOptions /*dialog_options*/) const = 0;
 
+  /**
+   * Show a native OS file dialog (blocking/modal).
+   *
+   * \param type: Open, Save, or Folder selection.
+   * \param title: Title for the dialog window.
+   * \param initial_path: Initial file path or directory.
+   * \param filter_glob: Semicolon-separated file patterns (e.g. "*.blend;*.fbx"), or nullptr.
+   * \param default_name: Default file name for save dialogs.
+   * \param parent_window: Parent window handle for modality.
+   * \param r_filepath: Output file path (caller must free with free()), or nullptr on cancel.
+   * \return GHOST_kSuccess if a file was selected, GHOST_kFailure on cancel or error.
+   */
+  virtual GHOST_TSuccess showFileDialog(GHOST_TFileDialogType type,
+                                        const char *title,
+                                        const char *initial_path,
+                                        const char *filter_glob,
+                                        const char *default_name,
+                                        GHOST_TEmbedderWindowID parent_window,
+                                        char **r_filepath) const = 0;
+
   /***************************************************************************************
    * Debugging
    ***************************************************************************************/

@@ -265,6 +265,14 @@ class GHOST_SystemWin32 : public GHOST_System {
                                 const char *link,
                                 GHOST_DialogOptions dialog_options) const override;
 
+  GHOST_TSuccess showFileDialog(GHOST_TFileDialogType type,
+                                const char *title,
+                                const char *initial_path,
+                                const char *filter_glob,
+                                const char *default_name,
+                                GHOST_TEmbedderWindowID parent_window,
+                                char **r_filepath) const override;
+
   /**
    * Creates a drag & drop event and pushes it immediately onto the event queue.
    * Called by #GHOST_DropTargetWin32 class.

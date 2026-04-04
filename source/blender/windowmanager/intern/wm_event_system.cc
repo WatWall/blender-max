@@ -32,6 +32,7 @@
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
 #include "BLI_math_vector.h"
+#include "BLI_path_utils.hh"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_timer.h"
@@ -66,6 +67,7 @@
 #include "GPU_context.hh"
 
 #include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "UI_interface.hh"
 #include "UI_interface_layout.hh"
@@ -2827,6 +2829,126 @@ static void wm_operator_free_for_fileselect(wmOperator *file_operator)
   WM_operator_free(file_operator);
 }
 
+static const char *native_dialog_skip_props[] = {
+    "filepath", "directory", "filename", "files", "filter_glob", nullptr,
+};
+
+static bool native_dialog_op_has_extra_props(wmOperator *op)
+{
+  RNA_STRUCT_BEGIN (op->ptr, prop) {
+    if (RNA_property_flag(prop) & PROP_HIDDEN) {
+      continue;
+    }
+    const char *id = RNA_property_identifier(prop);
+    bool is_skip = false;
+    for (int i = 0; native_dialog_skip_props[i]; i++) {
+      if (STREQ(id, native_dialog_skip_props[i])) {
+        is_skip = true;
+        break;
+      }
+    }
+    if (!is_skip) {
+      return true;
+    }
+  }
+  RNA_STRUCT_END;
+  return false;
+}
+
+struct NativeDialogOpData {
+  wmOperator *op;
+  int action;
+};
+
+static void native_dialog_exec_cb(bContext *C, void *arg1, void *arg2)
+{
+  NativeDialogOpData *data = static_cast<NativeDialogOpData *>(arg1);
+  ui::Block *block = static_cast<ui::Block *>(arg2);
+  popup_menu_retval_set(block, ui::RETURN_OK, true);
+  popup_block_close(C, CTX_wm_window(C), block);
+  WM_event_fileselect_event(CTX_wm_manager(C), data->op, EVT_FILESELECT_EXEC);
+  MEM_delete(data);
+}
+
+static void native_dialog_cancel_button_cb(bContext *C, void *arg1, void *arg2)
+{
+  NativeDialogOpData *data = static_cast<NativeDialogOpData *>(arg1);
+  ui::Block *block = static_cast<ui::Block *>(arg2);
+  popup_block_close(C, CTX_wm_window(C), block);
+  WM_event_fileselect_event(CTX_wm_manager(C), data->op, EVT_FILESELECT_CANCEL);
+  MEM_delete(data);
+}
+
+static void native_dialog_cancel_cb(bContext *C, void *arg1)
+{
+  NativeDialogOpData *data = static_cast<NativeDialogOpData *>(arg1);
+  WM_event_fileselect_event(CTX_wm_manager(C), data->op, EVT_FILESELECT_CANCEL);
+  MEM_delete(data);
+}
+
+static ui::Block *native_dialog_props_create(bContext *C, ARegion *region, void *user_data)
+{
+  NativeDialogOpData *data = static_cast<NativeDialogOpData *>(user_data);
+  wmOperator *op = data->op;
+  const uiStyle *style = ui::style_get_dpi();
+
+  ui::Block *block = block_begin(C, region, __func__, ui::EmbossType::Emboss);
+  block_flag_disable(block, ui::BLOCK_LOOP);
+  block_flag_enable(block, ui::BLOCK_KEEP_OPEN | ui::BLOCK_POPUP);
+  block_theme_style_set(block, ui::BLOCK_THEME_STYLE_POPUP);
+  popup_dummy_panel_set(region, block, op->idname);
+
+  int width = 300 * UI_SCALE_FAC * style->widget.points / UI_DEFAULT_TEXT_POINTS;
+
+  ui::Layout &layout = ui::block_layout(
+      block, ui::LayoutDirection::Vertical, ui::LayoutType::Panel, 0, 0, width, 0, 0, style);
+
+  uiItemL_ex(&layout, WM_operatortype_name(op->type, op->ptr), ICON_NONE, true, false);
+  layout.separator(0.2f, ui::LayoutSeparatorType::Line);
+  layout.separator(0.5f);
+
+  const char *hide[] = {
+      "filepath", "files", "directory", "filename", "filter_glob",
+  };
+  bool hidden_override[ARRAY_SIZE(hide)] = {false};
+  for (int i = 0; i < ARRAY_SIZE(hide); i++) {
+    PropertyRNA *prop = RNA_struct_find_property(op->ptr, hide[i]);
+    if (prop && !(RNA_property_flag(prop) & PROP_HIDDEN)) {
+      RNA_def_property_flag(prop, PROP_HIDDEN);
+      hidden_override[i] = true;
+    }
+  }
+
+  uiTemplateOperatorPropertyButs(C, &layout, op, ui::BUT_LABEL_ALIGN_SPLIT_COLUMN, 0);
+
+  for (int i = 0; i < ARRAY_SIZE(hide); i++) {
+    PropertyRNA *prop = RNA_struct_find_property(op->ptr, hide[i]);
+    if (prop && hidden_override[i]) {
+      RNA_def_property_clear_flag(prop, PROP_HIDDEN);
+    }
+  }
+
+  layout.separator(1.8f);
+  block_func_set(block, nullptr, nullptr, nullptr);
+
+  ui::Layout &row = layout.split(0.5f, false);
+  row.scale_y_set(1.2f);
+
+  const char *confirm_text = (data->action == FILE_SAVE) ? IFACE_("Export") : IFACE_("Import");
+  ui::Button *confirm_but = uiDefBut(
+      row.block(), ui::ButtonType::But, confirm_text, 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, "");
+  ui::Button *cancel_but = uiDefBut(
+      row.block(), ui::ButtonType::But, IFACE_("Cancel"), 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, "");
+
+  button_func_set(confirm_but, native_dialog_exec_cb, data, block);
+  button_func_set(cancel_but, native_dialog_cancel_button_cb, data, block);
+  button_flag_enable(confirm_but, ui::BUT_ACTIVE_DEFAULT);
+
+  block_bounds_set_popup(block, 14 * UI_SCALE_FAC, nullptr);
+
+  return block;
+}
+
 /**
  * File-select handlers are only in the window queue,
  * so it's safe to switch screens or area types.
@@ -2841,6 +2963,80 @@ static eHandlerActionFlag wm_handler_fileselect_do(bContext *C,
 
   switch (val) {
     case EVT_FILESELECT_FULL_OPEN: {
+      if (U.use_native_file_dialog) {
+        wmOperator *op = handler->op;
+        PropertyRNA *prop;
+
+        char filepath[FILE_MAX] = "";
+        prop = RNA_struct_find_property(op->ptr, "filepath");
+        if (prop) {
+          RNA_string_get(op->ptr, "filepath", filepath);
+        }
+
+        char filter_glob[256] = "";
+        prop = RNA_struct_find_property(op->ptr, "filter_glob");
+        if (prop) {
+          RNA_string_get(op->ptr, "filter_glob", filter_glob);
+        }
+
+        int action = FILE_OPENFILE;
+        prop = RNA_struct_find_property(op->ptr, "action");
+        if (prop) {
+          action = RNA_property_enum_get(op->ptr, prop);
+        }
+        else {
+          prop = RNA_struct_find_property(op->ptr, "check_existing");
+          if (prop && RNA_property_boolean_get(op->ptr, prop)) {
+            action = FILE_SAVE;
+          }
+        }
+
+        GHOST_TFileDialogType dialog_type;
+        if (action == FILE_SAVE) {
+          dialog_type = GHOST_kFileDialogTypeSave;
+        }
+        else {
+          dialog_type = GHOST_kFileDialogTypeOpen;
+        }
+
+        char *result_path = nullptr;
+        GHOST_TSuccess result = WM_ghost_show_file_dialog(
+            dialog_type, nullptr, filepath, filter_glob, nullptr, nullptr, &result_path);
+
+        if (result == GHOST_kSuccess && result_path) {
+          RNA_string_set(op->ptr, "filepath", result_path);
+
+          char dir[FILE_MAXDIR], file[FILE_MAXFILE];
+          BLI_path_split_dir_file(result_path, dir, FILE_MAXDIR, file, FILE_MAXFILE);
+          prop = RNA_struct_find_property(op->ptr, "directory");
+          if (prop) {
+            RNA_string_set(op->ptr, "directory", dir);
+          }
+          prop = RNA_struct_find_property(op->ptr, "filename");
+          if (prop) {
+            RNA_string_set(op->ptr, "filename", file);
+          }
+
+          free(result_path);
+
+          if (native_dialog_op_has_extra_props(op)) {
+            NativeDialogOpData *data = MEM_new<NativeDialogOpData>(__func__);
+            data->op = op;
+            data->action = action;
+            popup_block_ex(C, native_dialog_props_create, nullptr, native_dialog_cancel_cb, data, op);
+          }
+          else {
+            WM_event_fileselect_event(wm, op, EVT_FILESELECT_EXEC);
+          }
+        }
+        else {
+          WM_event_fileselect_event(wm, op, EVT_FILESELECT_CANCEL);
+        }
+
+        action = WM_HANDLER_BREAK;
+        break;
+      }
+
       ScrArea *area = ED_screen_temp_space_open(
           C, IFACE_("Blender File View"), SPACE_FILE, U.filebrowser_display_type, true);
       if (!area) {
@@ -2932,7 +3128,7 @@ static eHandlerActionFlag wm_handler_fileselect_do(bContext *C,
           break;
         }
 
-        if (!temp_win && ctx_area->full) {
+        if (!temp_win && ctx_area && ctx_area->full) {
           ED_fileselect_params_to_userdef(static_cast<SpaceFile *>(ctx_area->spacedata.first));
           ED_screen_full_prevspace(C, ctx_area);
         }

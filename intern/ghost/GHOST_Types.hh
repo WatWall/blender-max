@@ -88,6 +88,12 @@ enum GHOST_DialogOptions {
   GHOST_DialogError = (1 << 1),
 };
 
+enum GHOST_TFileDialogType {
+  GHOST_kFileDialogTypeOpen = 0,
+  GHOST_kFileDialogTypeSave = 1,
+  GHOST_kFileDialogTypeFolder = 2,
+};
+
 /**
  * Static flag (relating to the back-ends support for features).
  *

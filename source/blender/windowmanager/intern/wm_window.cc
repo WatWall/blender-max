@@ -3506,6 +3506,18 @@ void WM_ghost_show_message_box(const char *title,
   g_system->showMessageBox(title, message, help_label, continue_label, link, dialog_options);
 }
 
+GHOST_TSuccess WM_ghost_show_file_dialog(GHOST_TFileDialogType type,
+                                           const char *title,
+                                           const char *initial_path,
+                                           const char *filter_glob,
+                                           const char *default_name,
+                                           GHOST_TEmbedderWindowID parent_window,
+                                           char **r_filepath)
+{
+  BLI_assert(g_system);
+  return g_system->showFileDialog(type, title, initial_path, filter_glob, default_name, parent_window, r_filepath);
+}
+
 /** \} */
 
 }  // namespace blender
