@@ -271,7 +271,8 @@ class GHOST_SystemWin32 : public GHOST_System {
                                 const char *filter_glob,
                                 const char *default_name,
                                 GHOST_TEmbedderWindowID parent_window,
-                                char **r_filepath) const override;
+                                bool allow_multi,
+                                char ***r_filepaths) const override;
 
   /**
    * Creates a drag & drop event and pushes it immediately onto the event queue.

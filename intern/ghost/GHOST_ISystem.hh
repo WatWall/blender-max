@@ -511,7 +511,9 @@ class GHOST_ISystem {
    * \param filter_glob: Semicolon-separated file patterns (e.g. "*.blend;*.fbx"), or nullptr.
    * \param default_name: Default file name for save dialogs.
    * \param parent_window: Parent window handle for modality.
-   * \param r_filepath: Output file path (caller must free with free()), or nullptr on cancel.
+   * \param allow_multi: Allow selecting multiple files (open dialogs only).
+   * \param r_filepaths: Output null-terminated array of file paths (caller must free each
+   *        with free() then the array itself), or nullptr on cancel.
    * \return GHOST_kSuccess if a file was selected, GHOST_kFailure on cancel or error.
    */
   virtual GHOST_TSuccess showFileDialog(GHOST_TFileDialogType type,
@@ -520,7 +522,8 @@ class GHOST_ISystem {
                                         const char *filter_glob,
                                         const char *default_name,
                                         GHOST_TEmbedderWindowID parent_window,
-                                        char **r_filepath) const = 0;
+                                        bool allow_multi,
+                                        char ***r_filepaths) const = 0;
 
   /***************************************************************************************
    * Debugging

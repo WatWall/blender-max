@@ -210,7 +210,8 @@ class GHOST_System : public GHOST_ISystem {
                                 const char * /*filter_glob*/,
                                 const char * /*default_name*/,
                                 GHOST_TEmbedderWindowID /*parent_window*/,
-                                char ** /*r_filepath*/) const override
+                                bool /*allow_multi*/,
+                                char *** /*r_filepaths*/) const override
   {
     return GHOST_kFailure;
   };

@@ -2893,12 +2893,13 @@ GHOST_TSuccess GHOST_SystemWin32::showFileDialog(GHOST_TFileDialogType type,
                                                   const char *filter_glob,
                                                   const char *default_name,
                                                   GHOST_TEmbedderWindowID parent_window,
-                                                  char **r_filepath) const
+                                                  bool allow_multi,
+                                                  char ***r_filepaths) const
 {
-  if (!r_filepath) {
+  if (!r_filepaths) {
     return GHOST_kFailure;
   }
-  *r_filepath = nullptr;
+  *r_filepaths = nullptr;
 
   IFileDialog *pFileDialog = nullptr;
   CLSID clsid;
@@ -2924,6 +2925,9 @@ GHOST_TSuccess GHOST_SystemWin32::showFileDialog(GHOST_TFileDialogType type,
   }
   if (type == GHOST_kFileDialogTypeFolder) {
     dwOptions |= FOS_PICKFOLDERS;
+  }
+  if (allow_multi && type != GHOST_kFileDialogTypeSave && type != GHOST_kFileDialogTypeFolder) {
+    dwOptions |= FOS_ALLOWMULTISELECT;
   }
   pFileDialog->SetOptions(dwOptions);
 
@@ -2981,26 +2985,72 @@ GHOST_TSuccess GHOST_SystemWin32::showFileDialog(GHOST_TFileDialogType type,
   hr = pFileDialog->Show((HWND)parent_window);
 
   if (SUCCEEDED(hr)) {
-    IShellItem *pItem = nullptr;
-    hr = pFileDialog->GetResult(&pItem);
-    if (SUCCEEDED(hr)) {
-      PWSTR pszFilePath = nullptr;
-      hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
-      if (SUCCEEDED(hr) && pszFilePath) {
-        int len = WideCharToMultiByte(CP_UTF8, 0, pszFilePath, -1, nullptr, 0, nullptr, nullptr);
-        if (len > 0) {
-          char *utf8_path = (char *)malloc(len);
-          WideCharToMultiByte(CP_UTF8, 0, pszFilePath, -1, utf8_path, len, nullptr, nullptr);
-          *r_filepath = utf8_path;
-        }
-        CoTaskMemFree(pszFilePath);
+    IShellItemArray *pItems = nullptr;
+
+    if (allow_multi && type != GHOST_kFileDialogTypeSave && type != GHOST_kFileDialogTypeFolder) {
+      IFileOpenDialog *pOpenDialog = nullptr;
+      hr = pFileDialog->QueryInterface(IID_PPV_ARGS(&pOpenDialog));
+      if (SUCCEEDED(hr)) {
+        hr = pOpenDialog->GetResults(&pItems);
+        pOpenDialog->Release();
       }
-      pItem->Release();
+    }
+
+    if (SUCCEEDED(hr) && pItems) {
+      DWORD count = 0;
+      pItems->GetCount(&count);
+
+      char **paths = (char **)malloc((count + 1) * sizeof(char *));
+      paths[count] = nullptr;
+
+      DWORD filled = 0;
+      for (DWORD i = 0; i < count; i++) {
+        IShellItem *pItem = nullptr;
+        hr = pItems->GetItemAt(i, &pItem);
+        if (SUCCEEDED(hr)) {
+          PWSTR pszFilePath = nullptr;
+          hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+          if (SUCCEEDED(hr) && pszFilePath) {
+            int len = WideCharToMultiByte(CP_UTF8, 0, pszFilePath, -1, nullptr, 0, nullptr, nullptr);
+            if (len > 0) {
+              char *utf8_path = (char *)malloc(len);
+              WideCharToMultiByte(CP_UTF8, 0, pszFilePath, -1, utf8_path, len, nullptr, nullptr);
+              paths[filled++] = utf8_path;
+            }
+            CoTaskMemFree(pszFilePath);
+          }
+          pItem->Release();
+        }
+      }
+      paths[filled] = nullptr;
+      *r_filepaths = paths;
+      pItems->Release();
+    }
+    else {
+      IShellItem *pItem = nullptr;
+      hr = pFileDialog->GetResult(&pItem);
+      if (SUCCEEDED(hr)) {
+        PWSTR pszFilePath = nullptr;
+        hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+        if (SUCCEEDED(hr) && pszFilePath) {
+          int len = WideCharToMultiByte(CP_UTF8, 0, pszFilePath, -1, nullptr, 0, nullptr, nullptr);
+          if (len > 0) {
+            char *utf8_path = (char *)malloc(len);
+            WideCharToMultiByte(CP_UTF8, 0, pszFilePath, -1, utf8_path, len, nullptr, nullptr);
+            char **paths = (char **)malloc(2 * sizeof(char *));
+            paths[0] = utf8_path;
+            paths[1] = nullptr;
+            *r_filepaths = paths;
+          }
+          CoTaskMemFree(pszFilePath);
+        }
+        pItem->Release();
+      }
     }
   }
 
   pFileDialog->Release();
-  return (*r_filepath) ? GHOST_kSuccess : GHOST_kFailure;
+  return (*r_filepaths && (*r_filepaths)[0]) ? GHOST_kSuccess : GHOST_kFailure;
 }
 
 /** \} */

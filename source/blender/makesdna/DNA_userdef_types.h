@@ -1204,7 +1204,7 @@ struct UserDef {
   char render_display_type = USER_RENDER_DISPLAY_WINDOW; /* eUserpref_RenderDisplayType */
   char filebrowser_display_type =
       USER_TEMP_SPACE_DISPLAY_WINDOW; /* eUserpref_TempSpaceDisplayType */
-  char use_native_file_dialog = 0;
+  char use_native_file_dialog = 1;
   char preferences_display_type =
       USER_TEMP_SPACE_DISPLAY_WINDOW; /* eUserpref_TempSpaceDisplayType */
   char _pad18[6] = {};

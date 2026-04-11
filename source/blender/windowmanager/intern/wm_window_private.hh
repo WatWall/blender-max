@@ -37,7 +37,8 @@ GHOST_TSuccess WM_ghost_show_file_dialog(GHOST_TFileDialogType type,
                                          const char *filter_glob,
                                          const char *default_name,
                                          GHOST_TEmbedderWindowID parent_window,
-                                         char **r_filepath);
+                                         bool allow_multi,
+                                         char ***r_filepaths);
 
 GHOST_TDrawingContextType wm_ghost_drawing_context_type(const GPUBackendType gpu_backend);
 

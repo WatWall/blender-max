@@ -2999,25 +2999,45 @@ static eHandlerActionFlag wm_handler_fileselect_do(bContext *C,
           dialog_type = GHOST_kFileDialogTypeOpen;
         }
 
-        char *result_path = nullptr;
+        bool has_files_prop = RNA_struct_find_property(op->ptr, "files") != nullptr;
+
+        char **result_paths = nullptr;
         GHOST_TSuccess result = WM_ghost_show_file_dialog(
-            dialog_type, nullptr, filepath, filter_glob, nullptr, nullptr, &result_path);
+            dialog_type, nullptr, filepath, filter_glob, nullptr, nullptr, has_files_prop, &result_paths);
 
-        if (result == GHOST_kSuccess && result_path) {
-          RNA_string_set(op->ptr, "filepath", result_path);
+        if (result == GHOST_kSuccess && result_paths && result_paths[0]) {
+          RNA_string_set(op->ptr, "filepath", result_paths[0]);
 
-          char dir[FILE_MAXDIR], file[FILE_MAXFILE];
-          BLI_path_split_dir_file(result_path, dir, FILE_MAXDIR, file, FILE_MAXFILE);
+          char dir[FILE_MAXDIR];
+          BLI_path_split_dir_part(result_paths[0], dir, FILE_MAXDIR);
           prop = RNA_struct_find_property(op->ptr, "directory");
           if (prop) {
             RNA_string_set(op->ptr, "directory", dir);
           }
-          prop = RNA_struct_find_property(op->ptr, "filename");
-          if (prop) {
-            RNA_string_set(op->ptr, "filename", file);
-          }
 
-          free(result_path);
+          if (has_files_prop) {
+            prop = RNA_struct_find_property(op->ptr, "files");
+            RNA_property_collection_clear(op->ptr, prop);
+            for (int i = 0; result_paths[i]; i++) {
+              PointerRNA itemptr;
+              RNA_property_collection_add(op->ptr, prop, &itemptr);
+              char file_name[FILE_MAXFILE];
+              BLI_path_split_file_part(result_paths[i], file_name, FILE_MAXFILE);
+              RNA_string_set(&itemptr, "name", file_name);
+              free(result_paths[i]);
+            }
+            free(result_paths);
+          }
+          else {
+            char file[FILE_MAXFILE];
+            BLI_path_split_dir_file(result_paths[0], dir, FILE_MAXDIR, file, FILE_MAXFILE);
+            prop = RNA_struct_find_property(op->ptr, "filename");
+            if (prop) {
+              RNA_string_set(op->ptr, "filename", file);
+            }
+            free(result_paths[0]);
+            free(result_paths);
+          }
 
           if (native_dialog_op_has_extra_props(op)) {
             NativeDialogOpData *data = MEM_new<NativeDialogOpData>(__func__);

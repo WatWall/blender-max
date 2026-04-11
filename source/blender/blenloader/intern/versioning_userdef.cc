@@ -1759,10 +1759,6 @@ void blo_do_versions_userdef(UserDef *userdef)
     }
   }
 
-  if (!USER_VERSION_ATLEAST(502, 30)) {
-    userdef->use_native_file_dialog = 0;
-  }
-
   if (!USER_VERSION_ATLEAST(502, 31)) {
     /* UserDef_PropertyDefault list added. Initialized empty by default. */
   }
