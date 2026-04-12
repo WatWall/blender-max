@@ -18,7 +18,6 @@
 #include "BLI_bounds.hh"
 #include "BLI_fileops.h"
 #include "BLI_index_range.hh"
-#include "BLI_listbase_iterator.hh"
 #include "BLI_math_base.h"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
@@ -33,7 +32,6 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_global.hh"
 #include "BKE_idtype.hh"
-#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
@@ -49,8 +47,6 @@
 #include "BKE_volume_grid.hh"
 #include "BKE_volume_grid_file_cache.hh"
 #include "BKE_volume_openvdb.hh"
-
-#include "DNA_layer_types.h"
 
 #include "BLT_translation.hh"
 
@@ -665,25 +661,6 @@ bool BKE_volume_is_points_only(const Volume *volume)
 
 /* Dependency Graph */
 
-static bool volume_has_visible_user(const Depsgraph *depsgraph, const Volume *volume)
-{
-  Scene *scene = DEG_get_evaluated_scene(depsgraph);
-  ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
-  const int required_flags = (DEG_get_mode(depsgraph) == DAG_EVAL_VIEWPORT) ?
-                                                                                BASE_ENABLED_AND_MAYBE_VISIBLE_IN_VIEWPORT :
-                                                                                BASE_ENABLED_RENDER;
-
-  BKE_view_layer_synced_ensure(scene, view_layer);
-  for (const Base &base : *BKE_view_layer_object_bases_get(view_layer)) {
-    if (base.object && base.object->data == &volume->id) {
-      if (base.flag & required_flags) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 static void volume_update_simplify_level(Main *bmain, Volume *volume, const Depsgraph *depsgraph)
 {
 #ifdef WITH_OPENVDB
@@ -742,10 +719,6 @@ static void volume_evaluate_modifiers(Depsgraph *depsgraph,
 
 void BKE_volume_eval_geometry(Depsgraph *depsgraph, Volume *volume)
 {
-  if (!volume_has_visible_user(depsgraph, volume)) {
-    return;
-  }
-
   Main *bmain = DEG_get_bmain(depsgraph);
 
   /* TODO: can we avoid modifier re-evaluation when frame did not change? */
