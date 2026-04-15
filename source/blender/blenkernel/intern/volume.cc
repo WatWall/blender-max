@@ -417,6 +417,14 @@ bool BKE_volume_is_loaded(const Volume *volume)
 
 bool BKE_volume_set_velocity_grid_by_name(Volume *volume, const StringRef ref_base_name)
 {
+  if (volume->use_separate_velocity_grids) {
+    STRNCPY(volume->velocity_grid, ref_base_name.data());
+    STRNCPY(volume->runtime->velocity_x_grid, volume->velocity_grid_x);
+    STRNCPY(volume->runtime->velocity_y_grid, volume->velocity_grid_y);
+    STRNCPY(volume->runtime->velocity_z_grid, volume->velocity_grid_z);
+    return true;
+  }
+
   const std::string base_name = ref_base_name;
 
   if (BKE_volume_grid_find(volume, base_name)) {
@@ -458,6 +466,19 @@ bool BKE_volume_set_velocity_grid_by_name(Volume *volume, const StringRef ref_ba
   volume->runtime->velocity_y_grid[0] = '\0';
   volume->runtime->velocity_z_grid[0] = '\0';
   return false;
+}
+
+void BKE_volume_set_velocity_grids_separate(Volume *volume,
+                                             const StringRef name_x,
+                                             const StringRef name_y,
+                                             const StringRef name_z)
+{
+  STRNCPY(volume->velocity_grid_x, name_x.data());
+  STRNCPY(volume->velocity_grid_y, name_y.data());
+  STRNCPY(volume->velocity_grid_z, name_z.data());
+  STRNCPY(volume->runtime->velocity_x_grid, name_x.data());
+  STRNCPY(volume->runtime->velocity_y_grid, name_y.data());
+  STRNCPY(volume->runtime->velocity_z_grid, name_z.data());
 }
 
 bool BKE_volume_load(const Volume *volume, const Main *bmain)
@@ -513,10 +534,16 @@ bool BKE_volume_load(const Volume *volume, const Main *bmain)
   }
 
   /* Try to detect the velocity grid. */
-  const char *common_velocity_names[] = {"velocity", "vel", "v"};
-  for (const char *common_velocity_name : common_velocity_names) {
-    if (BKE_volume_set_velocity_grid_by_name(const_cast<Volume *>(volume), common_velocity_name)) {
-      break;
+  if (volume->use_separate_velocity_grids) {
+    BKE_volume_set_velocity_grid_by_name(const_cast<Volume *>(volume), volume->velocity_grid);
+  }
+  else {
+    const char *common_velocity_names[] = {"velocity", "vel", "v"};
+    for (const char *common_velocity_name : common_velocity_names) {
+      if (BKE_volume_set_velocity_grid_by_name(const_cast<Volume *>(volume),
+                                                common_velocity_name)) {
+        break;
+      }
     }
   }
 

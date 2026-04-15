@@ -93,6 +93,10 @@ bke::VolumeGridData *BKE_volume_grid_find_for_write(Volume *volume, StringRef na
  * this will try common post-fixes in order to detect velocity fields split into multiple grids.
  * Return false if neither finding with the base name nor with the post-fixes succeeded. */
 bool BKE_volume_set_velocity_grid_by_name(Volume *volume, StringRef base_name);
+void BKE_volume_set_velocity_grids_separate(Volume *volume,
+                                             StringRef name_x,
+                                             StringRef name_y,
+                                             StringRef name_z);
 
 /* Volume Editing
  *

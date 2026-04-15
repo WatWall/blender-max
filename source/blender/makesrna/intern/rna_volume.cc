@@ -106,6 +106,47 @@ static void rna_Volume_velocity_grid_set(PointerRNA *ptr, const char *value)
   WM_main_add_notifier(NC_GEOM | ND_DATA, volume);
 }
 
+static void rna_Volume_use_separate_velocity_grids_update(Main * /*bmain*/,
+                                                           Scene * /*scene*/,
+                                                           PointerRNA *ptr)
+{
+  Volume *volume = static_cast<Volume *>(ptr->data);
+  if (volume->use_separate_velocity_grids) {
+    BKE_volume_set_velocity_grids_separate(
+        volume, volume->velocity_grid_x, volume->velocity_grid_y, volume->velocity_grid_z);
+  }
+  else {
+    BKE_volume_set_velocity_grid_by_name(volume, volume->velocity_grid);
+  }
+  WM_main_add_notifier(NC_GEOM | ND_DATA, volume);
+}
+
+static void rna_Volume_velocity_grid_axis_set(PointerRNA *ptr, const char *value, int axis)
+{
+  Volume *volume = static_cast<Volume *>(ptr->data);
+  BKE_volume_set_velocity_grids_separate(
+      volume,
+      axis == 0 ? value : volume->velocity_grid_x,
+      axis == 1 ? value : volume->velocity_grid_y,
+      axis == 2 ? value : volume->velocity_grid_z);
+  WM_main_add_notifier(NC_GEOM | ND_DATA, volume);
+}
+
+static void rna_Volume_velocity_grid_x_set(PointerRNA *ptr, const char *value)
+{
+  rna_Volume_velocity_grid_axis_set(ptr, value, 0);
+}
+
+static void rna_Volume_velocity_grid_y_set(PointerRNA *ptr, const char *value)
+{
+  rna_Volume_velocity_grid_axis_set(ptr, value, 1);
+}
+
+static void rna_Volume_velocity_grid_z_set(PointerRNA *ptr, const char *value)
+{
+  rna_Volume_velocity_grid_axis_set(ptr, value, 2);
+}
+
 /* Grid */
 
 static void rna_VolumeGrid_name_get(PointerRNA *ptr, char *value)
@@ -689,6 +730,29 @@ static void rna_def_volume(BlenderRNA *brna)
       prop,
       "Velocity Grid",
       "Name of the velocity field, or the base name if the velocity is split into multiple grids");
+
+  prop = RNA_def_property(srna, "use_separate_velocity_grids", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "use_separate_velocity_grids", 1);
+  RNA_def_property_ui_text(prop,
+                            "Use Separate Velocity Grids",
+                            "Manually specify grid names for each velocity axis component");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, 0, "rna_Volume_use_separate_velocity_grids_update");
+
+  prop = RNA_def_property(srna, "velocity_grid_x", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "velocity_grid_x");
+  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_Volume_velocity_grid_x_set");
+  RNA_def_property_ui_text(prop, "Velocity X Grid", "Name of the grid for the X axis velocity component");
+
+  prop = RNA_def_property(srna, "velocity_grid_y", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "velocity_grid_y");
+  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_Volume_velocity_grid_y_set");
+  RNA_def_property_ui_text(prop, "Velocity Y Grid", "Name of the grid for the Y axis velocity component");
+
+  prop = RNA_def_property(srna, "velocity_grid_z", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "velocity_grid_z");
+  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_Volume_velocity_grid_z_set");
+  RNA_def_property_ui_text(prop, "Velocity Z Grid", "Name of the grid for the Z axis velocity component");
 
   prop = RNA_def_property(srna, "velocity_unit", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "velocity_unit");

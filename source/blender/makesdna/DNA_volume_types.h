@@ -149,6 +149,13 @@ struct Volume {
   /* Factor for velocity vector for artistic control. */
   float velocity_scale = 1.0f;
 
+  /* Separate velocity grids per axis. */
+  char use_separate_velocity_grids = 0;
+  char velocity_grid_x[64] = "";
+  char velocity_grid_y[64] = "";
+  char velocity_grid_z[64] = "";
+  char _pad4[7] = {};
+
   /* Draw Cache */
   draw::VolumeBatchCache *batch_cache = nullptr;
 

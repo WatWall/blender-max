@@ -137,7 +137,17 @@ class DATA_PT_volume_render(DataButtonsPanel, Panel):
             col.prop(render, "precision")
 
             col = layout.column(align=False)
-            col.prop(volume, "velocity_grid")
+            if volume.use_separate_velocity_grids:
+                row = col.row(align=True)
+                row.label(text="Velocity Grid")
+                row.prop(volume, "use_separate_velocity_grids", text="", icon='THREE_DOTS')
+                col.prop(volume, "velocity_grid_x", text="X")
+                col.prop(volume, "velocity_grid_y", text="Y")
+                col.prop(volume, "velocity_grid_z", text="Z")
+            else:
+                row = col.row(align=True)
+                row.prop(volume, "velocity_grid", text="Velocity Grid")
+                row.prop(volume, "use_separate_velocity_grids", text="", icon='THREE_DOTS')
 
             col.prop(volume, "velocity_unit")
             col.prop(volume, "velocity_scale")
