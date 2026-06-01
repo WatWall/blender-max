@@ -1775,7 +1775,6 @@ void blo_do_versions_userdef(UserDef *userdef)
      * just code), the flag can be removed. */
     userdef->experimental.use_remote_asset_libraries = true;
   }
-  }
 
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
