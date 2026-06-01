@@ -10,17 +10,20 @@
 
 #include "BLI_math_base.h"
 #include "BLI_math_vector.hh"
+#include "BLI_profile.hh"
 
 #include "BLT_translation.hh"
 
 #include "DNA_sequence_types.h"
 
 #include "SEQ_modifier.hh"
+#include "SEQ_render.hh"
 
 #include "UI_interface.hh"
 #include "UI_interface_layout.hh"
 
 #include "modifier.hh"
+#include "render.hh"
 
 namespace blender::seq {
 
@@ -51,10 +54,12 @@ struct BrightContrastApplyOp {
   }
 };
 
-static void brightcontrast_apply(ModifierApplyContext &context,
-                                 StripModifierData *smd,
-                                 ImBuf *mask)
+static void brightcontrast_apply(ModifierApplyContext &context, StripModifierData *smd)
 {
+  BLI_profile_scope_with_name("SeqModBrightContrast", ProfileCategory::Draw);
+  ensure_ibuf_is_sequencer_space(context.render_data.scene, context.image, false);
+  ImBuf *mask = modifier_render_mask_input(context, *smd);
+
   const BrightContrastModifierData *bcmd = reinterpret_cast<BrightContrastModifierData *>(smd);
 
   BrightContrastApplyOp op;
@@ -78,6 +83,9 @@ static void brightcontrast_apply(ModifierApplyContext &context,
   }
 
   apply_modifier_op(op, context.image, mask, context.transform);
+  if (mask != nullptr) {
+    IMB_freeImBuf(mask);
+  }
 }
 
 static void brightcontrast_panel_draw(const bContext *C, Panel *panel)

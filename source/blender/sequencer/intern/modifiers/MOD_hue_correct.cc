@@ -7,6 +7,7 @@
  */
 
 #include "BLI_math_color.h"
+#include "BLI_profile.hh"
 
 #include "BKE_colortools.hh"
 
@@ -16,11 +17,13 @@
 #include "DNA_sequence_types.h"
 
 #include "SEQ_modifier.hh"
+#include "SEQ_render.hh"
 
 #include "UI_interface.hh"
 #include "UI_interface_layout.hh"
 
 #include "modifier.hh"
+#include "render.hh"
 
 namespace blender::seq {
 
@@ -104,8 +107,12 @@ struct HueCorrectApplyOp {
   }
 };
 
-static void hue_correct_apply(ModifierApplyContext &context, StripModifierData *smd, ImBuf *mask)
+static void hue_correct_apply(ModifierApplyContext &context, StripModifierData *smd)
 {
+  BLI_profile_scope_with_name("SeqModHueCorrect", ProfileCategory::Draw);
+  ensure_ibuf_is_sequencer_space(context.render_data.scene, context.image, false);
+  ImBuf *mask = modifier_render_mask_input(context, *smd);
+
   HueCorrectModifierData *hcmd = reinterpret_cast<HueCorrectModifierData *>(smd);
 
   BKE_curvemapping_init(&hcmd->curve_mapping);
@@ -113,6 +120,9 @@ static void hue_correct_apply(ModifierApplyContext &context, StripModifierData *
   HueCorrectApplyOp op;
   op.curve_mapping = &hcmd->curve_mapping;
   apply_modifier_op(op, context.image, mask, context.transform);
+  if (mask != nullptr) {
+    IMB_freeImBuf(mask);
+  }
 }
 
 static void hue_correct_panel_draw(const bContext *C, Panel *panel)
