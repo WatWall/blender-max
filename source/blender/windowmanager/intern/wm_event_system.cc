@@ -2893,6 +2893,7 @@ static void native_dialog_exec_cb(bContext *C, void *arg1, void *arg2)
 {
   NativeDialogOpData *data = static_cast<NativeDialogOpData *>(arg1);
   ui::Block *block = static_cast<ui::Block *>(arg2);
+  data->op->is_native_file_dialog = false;
   popup_menu_retval_set(block, ui::RETURN_OK, true);
   popup_block_close(C, CTX_wm_window(C), block);
   WM_event_fileselect_event(CTX_wm_manager(C), data->op, EVT_FILESELECT_EXEC);
@@ -2903,6 +2904,7 @@ static void native_dialog_cancel_button_cb(bContext *C, void *arg1, void *arg2)
 {
   NativeDialogOpData *data = static_cast<NativeDialogOpData *>(arg1);
   ui::Block *block = static_cast<ui::Block *>(arg2);
+  data->op->is_native_file_dialog = false;
   popup_block_close(C, CTX_wm_window(C), block);
   WM_event_fileselect_event(CTX_wm_manager(C), data->op, EVT_FILESELECT_CANCEL);
   MEM_delete(data);
@@ -2911,6 +2913,7 @@ static void native_dialog_cancel_button_cb(bContext *C, void *arg1, void *arg2)
 static void native_dialog_cancel_cb(bContext *C, void *arg1)
 {
   NativeDialogOpData *data = static_cast<NativeDialogOpData *>(arg1);
+  data->op->is_native_file_dialog = false;
   WM_event_fileselect_event(CTX_wm_manager(C), data->op, EVT_FILESELECT_CANCEL);
   MEM_delete(data);
 }
@@ -3069,6 +3072,7 @@ static eHandlerActionFlag wm_handler_fileselect_do(bContext *C,
           }
 
           if (native_dialog_op_has_extra_props(op)) {
+            op->is_native_file_dialog = true;
             NativeDialogOpData *data = MEM_new<NativeDialogOpData>(__func__);
             data->op = op;
             data->action = action;

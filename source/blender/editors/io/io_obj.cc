@@ -137,7 +137,10 @@ static wmOperatorStatus wm_obj_export_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static void ui_obj_export_settings(const bContext *C, ui::Layout &layout, PointerRNA *ptr)
+static void ui_obj_export_settings(const bContext *C,
+                                   ui::Layout &layout,
+                                   PointerRNA *ptr,
+                                   bool is_native_file_dialog)
 {
   const bool export_animation = RNA_boolean_get(ptr, "export_animation");
   const bool export_smooth_groups = RNA_boolean_get(ptr, "export_smooth_groups");
@@ -150,7 +153,7 @@ static void ui_obj_export_settings(const bContext *C, ui::Layout &layout, Pointe
   if (ui::Layout *panel = layout.panel(C, "OBJ_export_general", false, IFACE_("General"))) {
     ui::Layout &col = panel->column(false);
 
-    if (CTX_wm_space_file(C)) {
+    if (CTX_wm_space_file(C) || is_native_file_dialog) {
       ui::Layout &sub = col.column(false, IFACE_("Include"));
       sub.prop(ptr, "export_selected_objects", UI_ITEM_NONE, IFACE_("Selection Only"), ICON_NONE);
     }
@@ -217,7 +220,7 @@ static void ui_obj_export_settings(const bContext *C, ui::Layout &layout, Pointe
 
 static void wm_obj_export_draw(bContext *C, wmOperator *op)
 {
-  ui_obj_export_settings(C, *op->layout, op->ptr);
+  ui_obj_export_settings(C, *op->layout, op->ptr, op->is_native_file_dialog);
 }
 
 /**

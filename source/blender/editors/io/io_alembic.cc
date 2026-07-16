@@ -152,7 +152,10 @@ static wmOperatorStatus wm_alembic_export_exec(bContext *C, wmOperator *op)
   return as_background_job || ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
-static void ui_alembic_export_settings(const bContext *C, ui::Layout &layout, PointerRNA *ptr)
+static void ui_alembic_export_settings(const bContext *C,
+                                       ui::Layout &layout,
+                                       PointerRNA *ptr,
+                                       bool is_native_file_dialog)
 {
   layout.use_property_split_set(true);
   layout.use_property_decorate_set(false);
@@ -162,7 +165,7 @@ static void ui_alembic_export_settings(const bContext *C, ui::Layout &layout, Po
     col->prop(ptr, "global_scale", UI_ITEM_NONE, std::nullopt, ICON_NONE);
 
     col = &panel->column(false);
-    if (CTX_wm_space_file(C)) {
+    if (CTX_wm_space_file(C) || is_native_file_dialog) {
       ui::Layout &sub = col->column(true, IFACE_("Include"));
       sub.prop(ptr, "selected", UI_ITEM_NONE, IFACE_("Selection Only"), ICON_NONE);
     }
@@ -250,7 +253,7 @@ static void wm_alembic_export_draw(bContext *C, wmOperator *op)
     RNA_boolean_set(op->ptr, "init_scene_frame_range", false);
   }
 
-  ui_alembic_export_settings(C, *op->layout, op->ptr);
+  ui_alembic_export_settings(C, *op->layout, op->ptr, op->is_native_file_dialog);
 }
 
 static bool wm_alembic_export_check(bContext * /*C*/, wmOperator *op)

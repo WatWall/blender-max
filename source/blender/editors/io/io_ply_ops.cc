@@ -119,7 +119,7 @@ static void wm_ply_export_draw(bContext *C, wmOperator *op)
       sub.prop(ptr, "ascii_format", UI_ITEM_NONE, IFACE_("ASCII"), ICON_NONE);
     }
     /* The Selection only options only make sense when using regular export. */
-    if (CTX_wm_space_file(C)) {
+    if (CTX_wm_space_file(C) || op->is_native_file_dialog) {
       ui::Layout &sub = col.column(false, IFACE_("Include"));
       sub.prop(ptr, "export_selected_objects", UI_ITEM_NONE, IFACE_("Selection Only"), ICON_NONE);
     }

@@ -105,7 +105,7 @@ static void wm_stl_export_draw(bContext *C, wmOperator *op)
     sub->prop(ptr, "ascii_format", UI_ITEM_NONE, IFACE_("ASCII"), ICON_NONE);
 
     /* The Batch mode and Selection only options only make sense when using regular export. */
-    if (CTX_wm_space_file(C)) {
+    if (CTX_wm_space_file(C) || op->is_native_file_dialog) {
       col.prop(ptr, "use_batch", UI_ITEM_NONE, IFACE_("Batch"), ICON_NONE);
 
       sub = &col.column(false, IFACE_("Include"));

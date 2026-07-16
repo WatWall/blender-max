@@ -392,7 +392,7 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
     col->prop(ptr, "root_prim_path", UI_ITEM_NONE, std::nullopt, ICON_NONE);
 
     ui::Layout *sub = &col->column(true, IFACE_("Include"));
-    if (CTX_wm_space_file(C)) {
+    if (CTX_wm_space_file(C) || op->is_native_file_dialog) {
       sub->prop(ptr, "selected_objects_only", UI_ITEM_NONE, std::nullopt, ICON_NONE);
     }
     sub->prop(ptr, "export_animation", UI_ITEM_NONE, std::nullopt, ICON_NONE);

@@ -512,7 +512,8 @@ struct wmOperator {
   /** Runtime for drawing. */
   ui::Layout *layout = nullptr;
   eOperator_Flag flag = {};
-  char _pad[6] = {};
+  char is_native_file_dialog = false;
+  char _pad[5] = {};
 };
 
 }  // namespace blender
