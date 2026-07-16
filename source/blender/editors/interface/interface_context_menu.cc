@@ -14,6 +14,8 @@
 
 #include "DNA_screen_types.h"
 
+#include "AS_asset_representation.hh"
+
 #include "BLI_fileops.h"
 #include "BLI_path_utils.hh"
 #include "BLI_string_utf8.h"
@@ -26,6 +28,7 @@
 #include "BKE_screen.hh"
 
 #include "ED_asset.hh"
+#include "ED_asset_menu_utils.hh"
 #include "ED_buttons.hh"
 #include "ED_keyframing.hh"
 #include "ED_screen.hh"
@@ -92,7 +95,7 @@ static IDProperty *shortcut_property_from_rna_for_enum(bContext *C,
 
   const char *identifier = nullptr;
   RNA_property_enum_identifier(
-      C, &but_parent->rnapoin, but_parent->rnaprop, int(but->hardmin), &identifier);
+      C, &but_parent->rnapoin, but_parent->rnaprop, but->retval, &identifier);
 
   if (identifier == nullptr) {
     /* Return early when valid identifier is not found for the button representing enum value. */
@@ -610,9 +613,9 @@ bool popup_context_menu_for_button(bContext *C, Button *but, const wmEvent *even
     const bool is_array_component = (is_array && but->rnaindex != -1);
     const bool is_whole_array = (is_array && but->rnaindex == -1);
 
-    const uint override_status = RNA_property_override_library_status(
+    const eRNAOverrideStatus override_status = RNA_property_override_library_status(
         CTX_data_main(C), ptr, prop, -1);
-    const bool is_overridable = (override_status & RNA_OVERRIDE_STATUS_OVERRIDABLE) != 0;
+    const bool is_overridable = flag_is_set(override_status, eRNAOverrideStatus::LibOverridable);
 
     /* Set the (button_pointer, button_prop)
      * and pointer data for Python access to the hovered UI element. */
@@ -1039,6 +1042,14 @@ bool popup_context_menu_for_button(bContext *C, Button *but, const wmEvent *even
     }
   }
 
+  /* Download online assets. */
+  if (but->optype && but->opptr && ed::asset::operator_asset_reference_props_is_set(*but->opptr)) {
+    const asset_system::AssetRepresentation *asset = CTX_wm_asset(C);
+    if (asset && asset->is_online_only()) {
+      layout.op("ASSET_OT_assets_download", {}, ICON_DOWNLOAD);
+    }
+  }
+
   {
     const ARegion *region = CTX_wm_region_popup(C) ? CTX_wm_region_popup(C) : CTX_wm_region(C);
     ButtonViewItem *view_item_but = (but->type == ButtonType::ViewItem) ?
@@ -1385,7 +1396,8 @@ void popup_context_menu_for_panel(bContext *C, ARegion *region, Panel *panel)
   }
 
   PointerRNA prefs_ptr = RNA_pointer_create_discrete(nullptr, RNA_PreferencesSystem, &U);
-  layout.prop(&prefs_ptr, "show_panel_tabs_compact", UI_ITEM_NONE, "Compact Tabs", ICON_NONE);
+  layout.prop(
+      &prefs_ptr, "show_panel_tabs_compact", UI_ITEM_NONE, IFACE_("Compact Tabs"), ICON_NONE);
 
   popup_menu_end(C, pup);
 }

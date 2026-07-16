@@ -260,35 +260,45 @@ IndexRange AbstractGridView::get_visible_range(
   return visible_items;
 }
 
-void AbstractGridView::scroll_active_into_view(bContext *C)
+void AbstractGridView::scroll_active_into_view(bContext *C, bool scroll_active_to_center)
 {
   int index = 0;
   this->foreach_filtered_item([&](AbstractViewItem &item) {
     if (item.is_active()) {
       Button *but = reinterpret_cast<Button *>(item.view_item_button());
       ARegion *region = CTX_wm_region(C);
-
+      rctf rect;
+      View2D &v2d = region->v2d;
       if (but) {
-        but_ensure_in_view(C, region, but);
-        return;
+        rctf region_rect;
+        block_to_region_rctf(region, but->block, &region_rect, &but->rect);
+
+        view2d_region_to_view_rctf(&v2d, &region_rect, &rect);
       }
 
-      View2D &v2d = region->v2d;
-
       const IndexRange &visible_range = this->get_visible_range(v2d, nullptr);
-      const int first_idx_in_view = visible_range.first();
-      const int last_idx_in_view = visible_range.last();
+      int first_idx_in_view = visible_range.first();
+      int last_idx_in_view = visible_range.last();
+
+      /* When button is slightly outside the view, clamp region to button's height, see: !159566 */
+      first_idx_in_view += rect.ymax > v2d.cur.ymax ? cols_per_row_ : 0;
+      last_idx_in_view -= rect.ymin < v2d.cur.ymin ? cols_per_row_ : 0;
+
+      const int view_height = BLI_rcti_size_y(&v2d.mask);
+      const int count_rows_in_view = std::max(view_height / style_.tile_height, 1);
 
       if (index < first_idx_in_view) {
-        const int target_row = index / cols_per_row_;
+        int target_row = index / cols_per_row_;
+        target_row -= scroll_active_to_center ? count_rows_in_view / 2 : 0;
         const int cur_height = BLI_rctf_size_y(&v2d.cur);
         v2d.cur.ymax = v2d.tot.ymax - target_row * style_.tile_height;
         v2d.cur.ymin = v2d.cur.ymax - cur_height;
       }
       else if (index >= last_idx_in_view) {
-        const int target_row = (index / cols_per_row_) + 1;
+        int target_row = (index / cols_per_row_) + 1;
+        target_row += scroll_active_to_center ? count_rows_in_view / 2 : 0;
         const int cur_height = BLI_rctf_size_y(&v2d.cur);
-        v2d.cur.ymin = v2d.tot.ymax - target_row * style_.tile_height;
+        v2d.cur.ymin = v2d.tot.ymax - target_row * style_.tile_height - 2 * U.pixelsize;
         v2d.cur.ymax = v2d.cur.ymin + cur_height;
       }
     }

@@ -977,7 +977,7 @@ if((WITH_CYCLES OR WITH_GPU_RENDER_TESTS) AND TEST_SRC_DIR_EXISTS)
             "Supported devices are: ${_cycles_all_test_devices}")
       endif()
       string(TOLOWER "${_cycles_device}" _cycles_device_lower)
-      set(_cycles_render_tests bake;bake_raytrace;${render_tests};osl;image_mipmap)
+      set(_cycles_render_tests bake;bake_raytrace;${render_tests};osl;image_mipmap;updates)
 
       set(_cycles_osl_test_type none)
       if(WITH_CYCLES_OSL)
@@ -1061,7 +1061,7 @@ if((WITH_CYCLES OR WITH_GPU_RENDER_TESTS) AND TEST_SRC_DIR_EXISTS)
         endforeach()
       endif()
 
-      if(WITH_VULKAN_BACKEND AND WITH_GPU_RENDER_TESTS_VULKAN
+      if(WITH_VULKAN_BACKEND
           AND (NOT (name STREQUAL "storm_hydra" OR name STREQUAL "storm_usd") OR WITH_STORM_TESTS_VULKAN))
         foreach(render_test ${render_tests})
           add_render_test(
@@ -1249,6 +1249,7 @@ if(TEST_SRC_DIR_EXISTS)
     repeat_zone
     mesh_primitives
     mesh
+    mesh/bevel
     mesh/extrude
     mesh/split_edges
     mesh/triangulate
@@ -1526,6 +1527,11 @@ if(TEST_SRC_DIR_EXISTS)
   )
 
   add_blender_test(
+    sequencer_strip_naming
+    --python ${CMAKE_CURRENT_LIST_DIR}/sequencer_strip_naming.py
+  )
+
+  add_blender_test(
     sequencer_load_meta_stack
     ${TEST_SRC_DIR}/sequence_editing/vse_load_meta_stack.blend
     --python ${TEST_PYTHON_DIR}/sequencer_load_meta_stack.py
@@ -1722,6 +1728,7 @@ if(WITH_UI_TESTS)
     test_render.interactive_rendering_cycles
     test_render.interactive_rendering_eevee
     test_render.animation_rendering_and_player
+    test_bpy_types.unregister_referenced_type
   )
   foreach(ui_test ${_ui_tests})
     add_blender_test_ui(

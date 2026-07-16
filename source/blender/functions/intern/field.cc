@@ -195,6 +195,15 @@ void FieldInput::hash_unique(UniqueHashBytes &hash, FieldHashDeep & /*deep_hash_
   hash.add(this);
 }
 
+FieldOperationPtr GField::try_extract_operation()
+{
+  MultiFn *multi_fn = std::get_if<MultiFn>(&variant_);
+  if (!multi_fn || !multi_fn->node) {
+    return nullptr;
+  }
+  return std::move(multi_fn->node);
+}
+
 void FieldInput::delete_self()
 {
   MEM_delete(this);
@@ -202,7 +211,33 @@ void FieldInput::delete_self()
 
 void FieldOperation::delete_self()
 {
+  this->delete_input_fields();
   MEM_delete(this);
+}
+
+void FieldOperation::delete_input_fields()
+{
+  BLI_assert(this->is_expired());
+  /* Some input fields are freed iteratively instead of recursively to avoid a potentially very
+   * deep call stack. */
+  Vector<FieldOperationPtr, 16> remaining;
+  for (GField &input : inputs_) {
+    if (FieldOperationPtr input_op = input.try_extract_operation()) {
+      remaining.append(std::move(input_op));
+    }
+  }
+  while (!remaining.is_empty()) {
+    FieldOperationPtr op = remaining.pop_last();
+    if (!op->is_mutable()) {
+      continue;
+    }
+    FieldOperation &op_ref = const_cast<FieldOperation &>(*op);
+    for (GField &input : op_ref.inputs_) {
+      if (FieldOperationPtr input_op = input.try_extract_operation()) {
+        remaining.append(std::move(input_op));
+      }
+    }
+  }
 }
 
 void FieldInputs::delete_self()
@@ -385,6 +420,11 @@ bool operator==(const GFieldRef &a, const GFieldRef &b)
           if (const auto *v_b = std::get_if<GFieldRef::Value>(&b.variant())) {
             if (v_a.type != v_b->type) {
               return false;
+            }
+            if (v_a.value == v_b->value) {
+              /* This may return true even if the values don't compare equal, e.g. due to NaN
+               * values. */
+              return true;
             }
             return v_a.type->is_equal_or_false(v_a.value, v_b->value);
           }

@@ -767,6 +767,7 @@ static void view3d_grid_steps_ex(const Scene *scene,
     }
   }
   else {
+    len = STEPS_LEN;
     if (rv3d->view != RV3D_VIEW_USER) {
       /* Allow 3 more subdivisions. */
       grid_scale /= powf(v3d->gridsubdiv, 3);
@@ -1856,6 +1857,7 @@ void ED_view3d_draw_offscreen_simple(Depsgraph *depsgraph,
                                      bool draw_background,
                                      const char *viewname,
                                      const bool do_color_management,
+                                     Object *camera_override,
                                      GPUOffScreen *ofs,
                                      GPUViewport *viewport)
 {
@@ -1927,7 +1929,14 @@ void ED_view3d_draw_offscreen_simple(Depsgraph *depsgraph,
   v3d.object_type_exclude_viewport = object_type_exclude_viewport_override;
   v3d.object_type_exclude_select = object_type_exclude_select_override;
 
-  rv3d.persp = RV3D_PERSP;
+  if (camera_override != nullptr) {
+    /* Override the active View3D camera and force camera perspective. */
+    rv3d.persp = RV3D_CAMOB;
+    v3d.camera = camera_override;
+  }
+  else {
+    rv3d.persp = RV3D_PERSP;
+  }
   v3d.clip_start = clip_start;
   v3d.clip_end = clip_end;
   /* Actually not used since we pass in the projection matrix. */

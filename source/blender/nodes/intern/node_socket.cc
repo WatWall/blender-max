@@ -1186,7 +1186,8 @@ static void make_common_type_prop(StructRNA &srna,
       "type",
       items,
       int(default_type),
-      r_generated.scope.add_value(fmt::format("{} {}", TIP_("Type for"), socket.name)).c_str(),
+      r_generated.scope.add_value(fmt::format(fmt::runtime(TIP_("Type for {}")), socket.name))
+          .c_str(),
       "");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_flag(prop, PROP_FORCE_GEOMETRY_EVAL);
@@ -1251,7 +1252,7 @@ static void make_common_attribute_name_prop(StructRNA &srna,
       "attribute_name",
       socket.default_attribute_name,
       0,
-      r_generated.scope.add_value(fmt::format("{} {}", TIP_("Attribute for"), socket.name))
+      r_generated.scope.add_value(fmt::format(fmt::runtime(TIP_("Attribute for {}")), socket.name))
           .c_str(),
       socket.description);
   RNA_def_property_flag(prop, PROP_FORCE_GEOMETRY_EVAL);
@@ -1329,7 +1330,8 @@ static bke::bNodeSocketType *make_socket_type_bool()
         "layer_name",
         nullptr,
         0,
-        r_generated.scope.add_value(fmt::format("{} {}", TIP_("Layer for"), socket.name)).c_str(),
+        r_generated.scope.add_value(fmt::format(fmt::runtime(TIP_("Layer for {}")), socket.name))
+            .c_str(),
         socket.description);
     RNA_def_property_flag(prop, PROP_FORCE_GEOMETRY_EVAL);
     RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
@@ -1815,7 +1817,11 @@ static bke::bNodeSocketType *make_socket_type_string(PropertySubType subtype)
                           socket.description);
     RNA_def_property_flag(prop, PROP_FORCE_GEOMETRY_EVAL);
     RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-    RNA_def_property_subtype(prop, PropertySubType(data->subtype));
+    PropertySubType subtype = PropertySubType(data->subtype);
+    RNA_def_property_subtype(prop, subtype);
+    if (subtype == PROP_FILEPATH) {
+      RNA_def_property_flag(prop, PROP_PATH_SUPPORTS_BLEND_RELATIVE);
+    }
     make_common_value_props(srna, socket, r_generated);
   };
   socktype->make_compositor_nodes_input_srna = [](const bNodeTree & /*tree*/,

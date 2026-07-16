@@ -86,8 +86,8 @@ class AnimTransformable {
    * and not in a matrix, thus skew is not supported. */
   MutableSpan<float> location_;
   /* Rotation can be expressed in different modes, which are stored in separate arrays. We have to
-   * use an Array of float* because the angle of axisangle is a separate float property. This is in
-   * contrast to e.g. `location_` which is always a float array so it can be referenced with a
+   * use an Array of float* because the angle of axis-angle is a separate float property. This is
+   * in contrast to e.g. `location_` which is always a float array so it can be referenced with a
    * `MutableSpan`. For the order of elements, see `RotationModeIndices` in `transformable.cc`. */
   Array<TransformFloatPtrs> rotations_;
   /* Points to an enum with the current rotation mode. See `eRotationModes`. */
@@ -104,7 +104,8 @@ class AnimTransformable {
   /* There has to be a constructor for every struct supported. */
   /* Constructor for pose bones. */
   AnimTransformable(Object &owner_id, bPoseChannel &pchan);
-  /* TODO (christoph): Add object support. */
+  /* Constructor for Objects. */
+  explicit AnimTransformable(Object &object);
 
   Type type() const
   {

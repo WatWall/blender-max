@@ -1635,35 +1635,59 @@ const char *effect_inputs_validate(int have_inputs, int num_inputs)
 }
 
 VectorSet<Strip *> strip_effect_get_new_inputs(const Scene *scene,
+                                               StripType effect_type,
                                                int num_inputs,
                                                bool ignore_active)
 {
+  BLI_assert(num_inputs <= 2);
   if (num_inputs == 0) {
     return {};
   }
 
   Editing *ed = seq::editing_get(scene);
-  VectorSet<Strip *> selected_strips = seq::query_selected_strips(ed->current_strips());
+  VectorSet<Strip *> inputs = seq::query_selected_strips(ed->current_strips());
   /* Ignore sound strips for now (avoids unnecessary errors when connected strips are
    * selected together, and the intent to operate on strips with video content is clear). */
-  selected_strips.remove_if([&](Strip *strip) { return strip->type == STRIP_TYPE_SOUND; });
+  inputs.remove_if([&](Strip *strip) { return strip->type == STRIP_TYPE_SOUND; });
 
   if (ignore_active) {
     /* If `ignore_active` is true, this function is being called from the reassign inputs
      * operator, meaning the active strip must be the effect strip to reassign. */
     Strip *active_strip = seq::select_active_get(scene);
-    selected_strips.remove_if([&](Strip *strip) { return strip == active_strip; });
+    inputs.remove_if([&](Strip *strip) { return strip == active_strip; });
   }
 
-  if (selected_strips.size() > num_inputs) {
-    VectorSet<Strip *> inputs;
-    for (int64_t i : IndexRange(num_inputs)) {
-      inputs.add(selected_strips[i]);
+  while (inputs.size() > num_inputs) {
+    inputs.pop();
+  }
+
+  if (inputs.size() == 2 && num_inputs == 2) {
+    Strip *first = inputs[0];
+    Strip *second = inputs[1];
+    bool do_swap = false;
+    if (seq::effect_is_transition(effect_type)) {
+      /* Sort by timeline frame so 2-input transitions go "from" earlier "to" later. */
+      const int first_start = first->left_handle();
+      const int second_start = second->left_handle();
+      do_swap = (first_start > second_start) ||
+                (first_start == second_start &&
+                 first->right_handle(scene) > second->right_handle(scene));
     }
-    return inputs;
+    else if (first == seq::select_active_get(scene) ||
+             (ignore_active && first->channel < second->channel))
+    {
+      /* Other 2-input effects (blend-modes) make the active strip the second input. If neither
+       * strip is active (as in reassign inputs), make it the strip on the lower channel. */
+      do_swap = true;
+    }
+    if (do_swap) {
+      inputs.clear();
+      inputs.add(second);
+      inputs.add(first);
+    }
   }
 
-  return selected_strips;
+  return inputs;
 }
 
 static wmOperatorStatus sequencer_reassign_inputs_exec(bContext *C, wmOperator *op)
@@ -1677,7 +1701,8 @@ static wmOperatorStatus sequencer_reassign_inputs_exec(bContext *C, wmOperator *
     return OPERATOR_CANCELLED;
   }
 
-  VectorSet<Strip *> inputs = strip_effect_get_new_inputs(scene, num_inputs, true);
+  VectorSet<Strip *> inputs = strip_effect_get_new_inputs(
+      scene, active_strip->type, num_inputs, true);
   StringRef error_msg = effect_inputs_validate(inputs.size(), num_inputs);
 
   if (!error_msg.is_empty()) {
@@ -2056,6 +2081,11 @@ void SEQUENCER_OT_split(wmOperatorType *ot)
 /** \name Box Blade Operator
  * \{ */
 
+static bool sequencer_box_blade_poll(bContext *C)
+{
+  return sequencer_edit_poll(C) && sequencer_view_strips_poll(C);
+}
+
 static wmOperatorStatus sequencer_box_blade_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
@@ -2273,7 +2303,7 @@ void SEQUENCER_OT_box_blade(wmOperatorType *ot)
   ot->invoke = WM_gesture_box_invoke;
   ot->exec = sequencer_box_blade_exec;
   ot->modal = sequencer_box_blade_modal;
-  ot->poll = sequencer_edit_poll;
+  ot->poll = sequencer_box_blade_poll;
   ot->ui = sequencer_box_blade_ui;
 
   /* Flags. */
@@ -4114,19 +4144,23 @@ static wmOperatorStatus sequencer_strip_transform_fit_exec(bContext *C, wmOperat
 
   for (Strip &strip : *ed->current_strips()) {
     if (strip.flag & SEQ_SELECT && strip.type != STRIP_TYPE_SOUND) {
-      const int timeline_frame = scene->r.cfra;
-      StripElem *strip_elem = seq::render_give_stripelem(scene, &strip, timeline_frame);
-
-      if (strip_elem == nullptr) {
-        continue;
+      int src_w, src_h;
+      if (strip.type == STRIP_TYPE_COLOR) {
+        const SolidColorVars *cv = static_cast<const SolidColorVars *>(strip.effectdata);
+        src_w = cv->width;
+        src_h = cv->height;
+      }
+      else {
+        const int timeline_frame = scene->r.cfra;
+        const StripElem *strip_elem = seq::render_give_stripelem(scene, &strip, timeline_frame);
+        if (strip_elem == nullptr) {
+          continue;
+        }
+        src_w = strip_elem->orig_width;
+        src_h = strip_elem->orig_height;
       }
 
-      seq::set_scale_to_fit(&strip,
-                            strip_elem->orig_width,
-                            strip_elem->orig_height,
-                            scene->r.xsch,
-                            scene->r.ysch,
-                            fit_method);
+      seq::set_scale_to_fit(&strip, src_w, src_h, scene->r.xsch, scene->r.ysch, fit_method);
       seq::relations_invalidate_cache(scene, &strip);
     }
   }

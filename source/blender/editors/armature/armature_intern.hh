@@ -204,7 +204,7 @@ void slide_subjects_free(ListBaseT<SlideSubject> *slide_subjects);
 /**
  * Helper for apply() / reset() - refresh the data.
  */
-void slide_subjects_refresh(bContext *C, ID *id);
+void slide_subjects_refresh(bContext *C, const SlideSubject &slide_subject);
 /**
  * Reset changes made to current slide subjects back to their stored values.
  */
@@ -212,8 +212,7 @@ void slide_subjects_reset(ListBaseT<SlideSubject> *slide_subjects);
 /** Perform auto-key-framing after changes were made + confirmed. */
 void slide_subjects_autokey(bContext *C,
                             Scene *scene,
-                            const ListBaseT<SlideSubject> *slide_subjects,
-                            float cframe);
+                            const ListBaseT<SlideSubject> *slide_subjects);
 
 /** \} */
 

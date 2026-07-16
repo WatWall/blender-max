@@ -239,8 +239,17 @@ std::string GPU_shader_preprocess_source(StringRefNull original,
   gpu::shader::SourceProcessor processor(original, "python_shader.glsl", shader::Language::GLSL);
   auto [processed_str, metadata, error] = processor.convert();
 
+  if (error.has_value()) {
+    std::cerr << error->full_report << std::endl;
+    return "\n#error conversion failled\n";
+  }
+
   for (auto builtin : metadata.builtins) {
     info.builtins(gpu::shader::convert_builtin_bit(builtin));
+  }
+  /* WORKAROUND: We have an extra check in place on Metal for clip distances (see #160847). */
+  if (bool(info.builtins_ & shader::BuiltinBits::CLIP_DISTANCES)) {
+    info.define("USE_WORLD_CLIP_PLANES");
   }
   return processed_str;
 };

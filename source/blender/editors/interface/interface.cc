@@ -1526,7 +1526,7 @@ static std::optional<std::string> but_event_property_operator_string(const bCont
              def_but_rna__panel_type,
              def_but_rna__menu_type))
     {
-      prop_enum_value = int(but->hardmin);
+      prop_enum_value = but->retval;
       ptr = &but_parent->rnapoin;
       prop = but_parent->rnaprop;
       prop_enum_value_ok = true;
@@ -1746,10 +1746,10 @@ static void menu_block_set_keymaps(const bContext *C, Block *block)
 
 void button_override_flag(Main *bmain, Button *but)
 {
-  const uint override_status = RNA_property_override_library_status(
+  const eRNAOverrideStatus override_status = RNA_property_override_library_status(
       bmain, &but->rnapoin, but->rnaprop, but->rnaindex);
 
-  if (override_status & RNA_OVERRIDE_STATUS_OVERRIDDEN) {
+  if (flag_is_set(override_status, eRNAOverrideStatus::LibOverridden)) {
     but->flag |= BUT_OVERRIDDEN;
   }
   else {
@@ -3073,6 +3073,28 @@ static std::string textbox_string_get(ButtonTextBox *textbox)
   return RNA_property_string_get(&textbox->rnapoin, textbox->rnaprop);
 }
 
+/**
+ * Returns true if the unit should be included in the number edit string.
+ */
+static bool button_edit_string_include_unit_suffix(const Button *button)
+{
+  const int unit_type = RNA_SUBTYPE_UNIT_VALUE(button_unit_type_get(button));
+  if (BKE_unit_is_adaptive(*button->block->unit, unit_type)) {
+    /* Include the unit in the edit string when the unit is adaptive. */
+    return true;
+  }
+  PropertySubType subtype = PROP_NONE;
+  if (button->rnaprop) {
+    subtype = RNA_property_subtype(button->rnaprop);
+  }
+  if (subtype == PROP_TIME_ABSOLUTE) {
+    /* Include the unit in the edit string when the property uses absolute time (independent of the
+     * scene settings). */
+    return true;
+  }
+  return false;
+}
+
 void button_string_get_ex(Button *but,
                           char *str,
                           const size_t str_maxncpy,
@@ -3177,11 +3199,8 @@ void button_string_get_ex(Button *but,
       }
 
       if (button_is_unit(but)) {
-        /* In case where the unit is adaptive, include the unit in the edit string. Otherwise the
-         * unit is added as an edit hint. */
-        const int unit_type = RNA_SUBTYPE_UNIT_VALUE(button_unit_type_get(but));
-        const bool do_suffix = BKE_unit_is_adaptive(*but->block->unit, unit_type);
-        get_but_string_unit(but, str, str_maxncpy, value, false, prec, do_suffix);
+        const bool include_unit_suffix = button_edit_string_include_unit_suffix(but);
+        get_but_string_unit(but, str, str_maxncpy, value, false, prec, include_unit_suffix);
       }
       else if (subtype == PROP_FACTOR) {
         if (U.factor_display_type == USER_FACTOR_AS_FACTOR) {
@@ -4745,7 +4764,6 @@ static void def_but_rna__menu(bContext *C, Layout *layout, void *but_p)
                                     UI_UNIT_Y,
                                     &handle->retvalue,
                                     description_static);
-        button_retval_set(item_but, B_NOP);
       }
       else {
         item_but = uiDefButV(block,
@@ -4756,17 +4774,15 @@ static void def_but_rna__menu(bContext *C, Layout *layout, void *but_p)
                              UI_UNIT_X * 5,
                              UI_UNIT_X,
                              &handle->retvalue,
-                             item->value,
+                             0.0,
                              0.0,
                              description_static);
-        button_retval_set(item_but, B_NOP);
       }
       if (item->value == current_value) {
         item_but->flag |= UI_SELECT_DRAW;
       }
 
-      /* "hardmin" is used to store the value of the enum item. */
-      item_but->hardmin = float(item->value);
+      button_enum_prop_value_set(item_but, item->value);
 
       if (use_enum_copy_description) {
         if (item->description && item->description[0]) {
@@ -5174,6 +5190,11 @@ Button *uiDefButAlert(Block *block, AlertIcon icon, int x, int y, short width, s
   return nullptr;
 }
 
+void button_enum_prop_value_set(Button *but, int retval)
+{
+  but->retval = retval;
+}
+
 void button_retval_set(Button *but, int retval)
 {
   but->retval = retval;
@@ -5205,7 +5226,7 @@ void autocomplete_update_name(AutoComplete *autocpl, const StringRef name)
   char *truncate = autocpl->truncate;
   const char *startname = autocpl->startname;
   int match_index = 0;
-  for (int a = 0; a < autocpl->maxncpy - 1; a++) {
+  for (int a = 0; a < std::min<size_t>(name.size(), autocpl->maxncpy) - 1; a++) {
     if (startname[a] == 0 || startname[a] != name[a]) {
       match_index = a;
       break;
@@ -6312,6 +6333,11 @@ void button_hint_drawstr_set(Button *but, const char *string)
   button_add_shortcut(but, string, false);
 }
 
+void button_icon_scale_set(Button *but, const float scale)
+{
+  but->icon_scale = scale;
+}
+
 void button_icon_indicator_number_set(Button *but, const int indicator_number)
 {
   icon_text_overlay_init_from_count(&but->icon_overlay_text, indicator_number);
@@ -6332,6 +6358,14 @@ void button_node_link_set(Button *but, bNodeSocket *socket, const float draw_col
   but->flag |= BUT_NODE_LINK;
   but->custom_data = socket;
   rgba_float_to_uchar(but->col, draw_color);
+}
+
+void button_pushbutton_draw_as_overlay_set(Button *but, const bool value)
+{
+  ButtonPush *but_push = static_cast<ButtonPush *>(but);
+  BLI_assert(but->type == ButtonType::But);
+
+  but_push->draw_as_overlay = value;
 }
 
 void button_number_step_size_set(Button *but, float step_size)
